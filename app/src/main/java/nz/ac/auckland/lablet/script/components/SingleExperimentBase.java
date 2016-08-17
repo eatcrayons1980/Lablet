@@ -11,6 +11,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Keep;
+
 import nz.ac.auckland.lablet.ExperimentActivity;
 import nz.ac.auckland.lablet.experiment.ExperimentHelper;
 import nz.ac.auckland.lablet.experiment.ISensorPlugin;
@@ -76,6 +78,7 @@ abstract class SingleExperimentBase extends ScriptComponentViewHolder {
 /**
  * View to start a camera experiment activity.
  */
+@Keep
 abstract class ScriptComponentSingleExperimentBaseView<ExperimentSensorPlugin extends ISensorPlugin>
         extends ActivityStarterView {
     static final int PERFORM_EXPERIMENT = 0;

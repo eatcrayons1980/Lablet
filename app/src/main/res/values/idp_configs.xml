@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="google_enabled">true</bool>
+    <string name="google_client_id" translatable="false">638674770789-9vms2sb4dc5op47ed413a7rsqrvam95s.apps.googleusercontent.com</string>
+        <!--
+        NOTE: This scheme is automatically provisioned by Google for Android OAuth2 clients, and is
+        the reverse form of the client ID registered above. Handling of this scheme is registered in an
+        intent filter in the app's manifest.
+        -->
+    <string name="google_auth_redirect_scheme" translatable="false">com.googleusercontent.apps.638674770789-9vms2sb4dc5op47ed413a7rsqrvam95s</string>
+    <string name="google_auth_redirect_uri" translatable="false">com.googleusercontent.apps.638674770789-9vms2sb4dc5op47ed413a7rsqrvam95s:/oauth2redirect</string>
+</resources>

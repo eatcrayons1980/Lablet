@@ -8,6 +8,7 @@
 package nz.ac.auckland.lablet.script.components;
 
 import android.content.Context;
+import android.support.annotation.Keep;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.*;

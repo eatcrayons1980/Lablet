@@ -27,3 +27,5 @@ proguard-project.txt
 
 # dolphin (KDE file manager)
 .directory
+.idea*
+*.iml

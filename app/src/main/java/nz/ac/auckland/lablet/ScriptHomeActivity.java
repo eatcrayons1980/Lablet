@@ -9,16 +9,30 @@ package nz.ac.auckland.lablet;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.*;
 import android.widget.*;
 
+import net.openid.appauth.AuthState;
+import net.openid.appauth.AuthorizationException;
+import net.openid.appauth.AuthorizationRequest;
+import net.openid.appauth.AuthorizationResponse;
+import net.openid.appauth.AuthorizationService;
+import net.openid.appauth.AuthorizationServiceConfiguration;
+import net.openid.appauth.ResponseTypeValues;
+import net.openid.appauth.TokenResponse;
+
+import org.json.JSONException;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
@@ -168,8 +182,12 @@ class ScriptDirs {
  * </p>
  */
 public class ScriptHomeActivity extends Activity {
+
+    static final private String TAG = "ScriptHomeActivity";
     static final public String REMOTE_TYPE = "remote";
-    static final private String TAG = "OpenCV";
+    private static final String SHARED_PREFERENCES_NAME = "AuthStatePreference";
+    private static final String AUTH_STATE = "AUTH_STATE";
+    private static final String USED_INTENT = "USED_INTENT";
 
     private List<ScriptMetaData> scriptList = null;
     private ArrayAdapter<ScriptMetaData> scriptListAdaptor = null;
@@ -178,40 +196,15 @@ public class ScriptHomeActivity extends Activity {
     private CheckBoxAdapter existingScriptListAdaptor = null;
     private MenuItem deleteItem = null;
     private MenuItem exportItem = null;
+    private MenuItem driveItem = null;
     private AlertDialog deleteScriptDataAlertBox = null;
     private AlertDialog infoAlertBox = null;
     private CheckBox selectAllCheckBox = null;
+    private static File[] selectedDirectories = null;
 
     final static private int START_SCRIPT = 1;
 
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch(status) {
-                case LoaderCallbackInterface.SUCCESS:
-                    Log.i(TAG,"OpenCV Manager Connected");
-                    //from now onwards, you can use OpenCV API
-                    Mat m = new Mat(5, 10, CvType.CV_8UC1, new Scalar(0));
-                    break;
-                case LoaderCallbackInterface.INIT_FAILED:
-                    Log.i(TAG,"Init Failed");
-                    break;
-                case LoaderCallbackInterface.INSTALL_CANCELED:
-                    Log.i(TAG,"Install Cancelled");
-                    break;
-                case LoaderCallbackInterface.INCOMPATIBLE_MANAGER_VERSION:
-                    Log.i(TAG,"Incompatible Version");
-                    break;
-                case LoaderCallbackInterface.MARKET_ERROR:
-                    Log.i(TAG,"Market Error");
-                    break;
-                default:
-                    Log.i(TAG,"OpenCV Manager Install");
-                    super.onManagerConnected(status);
-                    break;
-            }
-        }
-    };
+    AuthState mAuthState;
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -298,7 +291,46 @@ public class ScriptHomeActivity extends Activity {
             }
         });
 
+        driveItem = menu.findItem(R.id.save_to_drive);
+        assert driveItem != null;
+        driveItem.setVisible(false);
+        driveItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem menuItem) {
+
+                selectedDirectories = selectedItems();
+
+                AuthorizationServiceConfiguration serviceConfiguration = new AuthorizationServiceConfiguration(
+                        Uri.parse("https://accounts.google.com/o/oauth2/v2/auth") /* auth endpoint */,
+                        Uri.parse("https://www.googleapis.com/oauth2/v4/token") /* token endpoint */,
+                        null
+                );
+
+                String clientId = "638674770789-9vms2sb4dc5op47ed413a7rsqrvam95s.apps.googleusercontent.com";
+                Uri redirectUri = Uri.parse("nz.ac.auckland.lablet:/oauth2redirect");
+                AuthorizationRequest.Builder builder = new AuthorizationRequest.Builder(
+                        serviceConfiguration,
+                        clientId,
+                        ResponseTypeValues.CODE,
+                        redirectUri
+                );
+                builder.setScopes("profile", "https://www.googleapis.com/auth/drive.file");
+                AuthorizationRequest request = builder.build();
+
+                AuthorizationService authorizationService = new AuthorizationService(findViewById(R.id.save_to_drive).getContext());
+                String action = "nz.ac.auckland.lablet.HANDLE_AUTHORIZATION_RESPONSE";
+                PendingIntent pendingIntent = makePostIntent(request, new Intent(action));
+                authorizationService.performAuthorizationRequest(request, pendingIntent);
+
+                return true;
+            }
+        });
+
         return super.onPrepareOptionsMenu(menu);
+    }
+
+    private PendingIntent makePostIntent(AuthorizationRequest request, Intent intent) {
+        return PendingIntent.getActivity(this, request.hashCode(), intent, 0);
     }
 
     @Override
@@ -306,11 +338,12 @@ public class ScriptHomeActivity extends Activity {
         boolean atLeastOneSelected = isAtLeastOneExistingScriptSelected();
         deleteItem.setVisible(atLeastOneSelected);
         exportItem.setVisible(atLeastOneSelected);
+        driveItem.setVisible(atLeastOneSelected);
 
         return super.onPrepareOptionsMenu(menu);
     }
 
-    private void exportSelection() {
+    private File[] selectedItems() {
         List<File> exportList = new ArrayList<>();
 
         File scriptBaseDir = getScriptUserDataDir(this);
@@ -325,7 +358,16 @@ public class ScriptHomeActivity extends Activity {
         for (int i = 0; i < exportList.size(); i++)
             fileArray[i] = exportList.get(i);
 
-        ExportDirDialog dirDialog = new ExportDirDialog(this, fileArray);
+        return fileArray;
+    }
+
+    private void exportSelection() {
+        ExportDirDialog dirDialog = new ExportDirDialog(this, selectedItems());
+        dirDialog.show();
+    }
+
+    private void saveToDriveSelection(String authStateString) {
+        DriveDirDialog dirDialog = new DriveDirDialog(this, this.selectedDirectories, authStateString);
         dirDialog.show();
     }
 
@@ -398,6 +440,58 @@ public class ScriptHomeActivity extends Activity {
         };
 
         ScriptDirs.copyResourceScripts(this, false);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        checkIntent(intent);
+    }
+
+    private void checkIntent(@Nullable Intent intent) {
+        if (intent != null) {
+            String action = intent.getAction();
+            switch (action) {
+                case "nz.ac.auckland.lablet.HANDLE_AUTHORIZATION_RESPONSE":
+                    if (!intent.hasExtra(USED_INTENT)) {
+                        handleAuthorizationResponse(intent);
+                        intent.putExtra(USED_INTENT, true);
+                    }
+                    break;
+                default:
+                    // do nothing
+            }
+        }
+    }
+
+    private void handleAuthorizationResponse(Intent intent) {
+        AuthorizationResponse response = AuthorizationResponse.fromIntent(intent);
+        AuthorizationException error = AuthorizationException.fromIntent(intent);
+        final AuthState authState = new AuthState(response, error);
+
+        if (response != null) {
+            Log.i(TAG, String.format("Handled Authorization Response %s ", authState.jsonSerializeString()));
+            AuthorizationService service = new AuthorizationService(this);
+            service.performTokenRequest(response.createTokenExchangeRequest(), new AuthorizationService.TokenResponseCallback() {
+                @Override
+                public void onTokenRequestCompleted(@Nullable TokenResponse tokenResponse, @Nullable AuthorizationException exception) {
+                    if (exception != null) {
+                        Log.w(TAG, "Token Exchange failed", exception);
+                    } else {
+                        if (tokenResponse != null) {
+                            authState.update(tokenResponse, exception);
+                            saveToDriveSelection(authState.jsonSerializeString());
+                            Log.i(TAG, String.format("Token Response [ Access Token: %s, ID Token: %s ]", tokenResponse.accessToken, tokenResponse.idToken));
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        checkIntent(getIntent());
     }
 
     public void showScriptMenu() {
@@ -525,4 +619,36 @@ public class ScriptHomeActivity extends Activity {
 
         existingScriptListAdaptor.notifyDataSetChanged();
     }
+
+    /**
+     * Ensures that Lablet has access to OpenCV.
+     */
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch(status) {
+                case LoaderCallbackInterface.SUCCESS:
+                    Log.i(TAG,"OpenCV Manager Connected");
+                    //from now onwards, you can use OpenCV API
+                    Mat m = new Mat(5, 10, CvType.CV_8UC1, new Scalar(0));
+                    break;
+                case LoaderCallbackInterface.INIT_FAILED:
+                    Log.i(TAG,"Init Failed");
+                    break;
+                case LoaderCallbackInterface.INSTALL_CANCELED:
+                    Log.i(TAG,"Install Cancelled");
+                    break;
+                case LoaderCallbackInterface.INCOMPATIBLE_MANAGER_VERSION:
+                    Log.i(TAG,"Incompatible Version");
+                    break;
+                case LoaderCallbackInterface.MARKET_ERROR:
+                    Log.i(TAG,"Market Error");
+                    break;
+                default:
+                    Log.i(TAG,"OpenCV Manager Install");
+                    super.onManagerConnected(status);
+                    break;
+            }
+        }
+    };
 }

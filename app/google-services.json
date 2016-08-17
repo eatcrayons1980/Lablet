@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "638674770789",
+    "project_id": "firebase-lablet"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:638674770789:android:b1d16a9f0c9ed4db",
+        "android_client_info": {
+          "package_name": "nz.ac.auckland.lablet"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "638674770789-9vms2sb4dc5op47ed413a7rsqrvam95s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "nz.ac.auckland.lablet",
+            "certificate_hash": "B55B1CC687AF869EEDE1ED0F7AA2A148096B5CEF"
+          }
+        },
+        {
+          "client_id": "638674770789-a18hd9lj3cvomebn6j079o3v9cq3qovs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDq4I4Ds1E7TzynqwbiGMGU2cnVqe9BPs"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
