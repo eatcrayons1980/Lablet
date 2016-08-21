@@ -9,11 +9,7 @@ Lablet is developed using Intellij IDEA / Android Studio. If you want to build L
 
 Dependencies
 ---
-Lablet depends on OpenCV for Android to provide object tracking functionality. Assuming you have used git to clone Lablet:
-
-1. Download and unzip [OpenCV for Android 2.4.11](http://sourceforge.net/projects/opencvlibrary/files/opencv-android/2.4.11/OpenCV-2.4.11-android-sdk.zip/download).
-2. Copy the directory OpenCV-android-sdk-2.4.11/sdk/native/libs into Lablet/app/src/main
-3. Rename the libs folder (that you just copied) to jniLibs
+Lablet depends on OpenCV for Android to provide object tracking functionality. Lablet will ask the user to install OpenCV Manager the first time Lablet executes.
 
 Links
 ----
