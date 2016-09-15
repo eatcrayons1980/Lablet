@@ -10,7 +10,13 @@ import net.openid.appauth.AuthState;
 
 import org.json.JSONException;
 
-import java.io.File;
+import java.io.IOException;
+import java.net.CookieManager;
+
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * An {@link IntentService} subclass for uploading files to Google Drive on a separate
@@ -24,6 +30,7 @@ public class GoogleDriveUploadIntentService extends IntentService {
 
     private static final String ACTION_DRIVE_UPLOAD = "nz.ac.auckland.lablet.misc.action.DRIVE_UPLOAD";
     private static final String ACTION_AUTHORIZE = "nz.ac.auckland.lablet.misc.action.AUTHORIZE";
+    private static final String ACTION_DEAUTHORIZE = "nz.ac.auckland.lablet.misc.action.DEAUTHORIZE";
 
     private static final String EXTRA_AUTHORIZATION_STATE = "nz.ac.auckland.lablet.misc.extra.STATE";
 
@@ -45,12 +52,19 @@ public class GoogleDriveUploadIntentService extends IntentService {
     }
 
     /**
+     * Initiates a process which revokes the OAuth2 access to the Google API,
+     * essentially logging out the user.
+     */
+    public static void startActionDeauthState(Context context) {
+        Intent intent = new Intent(context, GoogleDriveUploadIntentService.class);
+        intent.setAction(ACTION_DEAUTHORIZE);
+        context.startService(intent);
+    }
+
+    /**
      * Starts this service to perform action 'Drive Upload' with the given parameters. If
      * the service is already performing a task this action will be queued.
-     *
-     * @see IntentService
      */
-    // TODO: Customize helper method
     public static void startActionDriveUpload(Context context, Uri directory) {
         Intent intent = new Intent(context, GoogleDriveUploadIntentService.class);
         intent.setAction(ACTION_DRIVE_UPLOAD);
@@ -66,9 +80,12 @@ public class GoogleDriveUploadIntentService extends IntentService {
                 final String authStateJson = intent.getStringExtra(EXTRA_AUTHORIZATION_STATE);
                 handleActionAuthorize(authStateJson);
             }
-            if (authState.isAuthorized() && ACTION_DRIVE_UPLOAD.equals(action)) {
+            if (ACTION_DRIVE_UPLOAD.equals(action)) {
                 final Uri directory = intent.getData();
                 handleActionDriveUpload(directory);
+            }
+            if (ACTION_DEAUTHORIZE.equals(action)) {
+                handleActionDeauthorize();
             }
         }
     }
@@ -80,8 +97,41 @@ public class GoogleDriveUploadIntentService extends IntentService {
             Log.d(TAG, "JSON is malformed.");
             e.printStackTrace();
         }
+        if (authState.isAuthorized()) {
+            Log.d(TAG, "Service authorized successfully.");
+        } else {
+            Log.e(TAG, "AuthState received is unauthorized.");
+        }
+    }
+
+    private void handleActionDeauthorize() {
+        OkHttpClient client = new OkHttpClient();
+
+        String token = authState.getAccessToken();
+
+        Log.d(TAG, " Sending to: https://accounts.google.com/o/oauth2/revoke?token=" + token);
+
+        HttpUrl url = new HttpUrl.Builder()
+                .scheme("https")
+                .host("accounts.google.com")
+                .addPathSegments("o/oauth2/revoke")
+                .addQueryParameter("token", token)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+        try {
+            Response response = client.newCall(request).execute();
+            Log.d(TAG, "Revoke response: " + response.body().string());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         if (!authState.isAuthorized()) {
-            Log.d(TAG, "AuthState received is unauthorized.");
+            Log.d(TAG, "Service deauthorized successfully.");
+        } else {
+            Log.e(TAG, "Could not deauthorize service.");
         }
     }
 
@@ -90,7 +140,10 @@ public class GoogleDriveUploadIntentService extends IntentService {
      * parameters.
      */
     private void handleActionDriveUpload(Uri directory) {
-        assert authState.isAuthorized();
-        Log.d(TAG, "Not yet implemented. Cannot upload " + directory);
+        if (!authState.isAuthorized()) {
+            Log.e(TAG, "Cannot upload. Google service unauthorized.");
+        } else {
+            Log.d(TAG, "Not yet implemented. Cannot upload " + directory);
+        }
     }
 }
