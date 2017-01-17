@@ -149,6 +149,7 @@ class ScriptDirs {
         File[] children = scriptDir.listFiles();
         for (File child : children != null ? children : new File[0]) {
 
+            String path = scriptDir.getPath();
             String texName = child.getName();
             if (!(texName.endsWith(".tex"))) continue;
             String luaName = texName.substring(0, texName.length() - 4) + ".lua";
@@ -156,7 +157,7 @@ class ScriptDirs {
             /* initialize reader */
             FileReader reader;
             try {
-                reader = new FileReader(texName);
+                reader = new FileReader(path + "/" + texName);
             } catch (FileNotFoundException e) {
                 Log.i(TAG, "Could not initialize reader for: " + texName, e);
                 continue;
@@ -165,7 +166,7 @@ class ScriptDirs {
             /* initialize writer */
             PrintWriter writer;
             try {
-                writer = new PrintWriter(luaName);
+                writer = new PrintWriter(path + "/" + luaName);
             } catch (FileNotFoundException e) {
                 Log.i(TAG, "Could not initialize writer for: " + luaName, e);
                 continue;

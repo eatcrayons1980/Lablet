@@ -5,15 +5,20 @@ Lablet leverages tablets (and smart phones) as experimental tools to perform rea
 
 Build
 ----
-Lablet is developed using Intellij IDEA / Android Studio. If you want to build Lablet on your own best use one of these IDEs. Lablet uses Gradle as a build system. Please make sure that you installed the Android SDK and configured it correctly.
+Lablet is developed using Intellij
+IDEA / [Android Studio](https://developer.android.com/studio). If you want to build
+Lablet on your own, it would be best to use one of these IDEs. Lablet uses Gradle
+as a build system. Please make sure that you installed the Android SDK and
+configured it correctly.
 
 Dependencies
 ---
-Lablet depends on OpenCV for Android to provide object tracking functionality. Lablet will ask the user to install OpenCV Manager the first time Lablet executes.
+Lablet depends on OpenCV for Android to provide object tracking functionality.
+Lablet will ask the user to install OpenCV Manager the first time Lablet executes.
 
 Links
 ----
 
-* [Web Page](http://lablet.auckland.ac.nz/)
-* [Google Play Store](https://play.google.com/store/apps/details?id=nz.ac.auckland.lablet)
+* [Lablet Web Page](http://lablet.auckland.ac.nz/)
+* [Lablet on Google Play Store](https://play.google.com/store/apps/details?id=nz.ac.auckland.lablet)
 
