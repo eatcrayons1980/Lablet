@@ -33,6 +33,8 @@ import nz.ac.auckland.lablet.script.ScriptMetaData;
 import nz.ac.auckland.lablet.views.*;
 import nz.ac.auckland.lablet.script.Script;
 import nz.ac.auckland.lablet.script.ScriptRunnerActivity;
+import nz.ac.auckland.lablet.lablex.LabLexer;
+import nz.ac.auckland.lablet.lablex.LabParser;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -47,9 +49,10 @@ import java.util.List;
 class ScriptDirs {
     final static private String SCRIPTS_COPIED_KEY = "scripts_copied_v1";
     final static private String PREFERENCES_NAME = "lablet_preferences";
+    private static final String TAG = "ScriptDirs";
 
     /**
-     * The script directory is the directory the stores the script files, i.e., the lua files.
+     * The script directory is the directory that stores the script files, i.e., the lua files.
      * @param context the context
      * @return the script directory File
      */
@@ -125,7 +128,7 @@ class ScriptDirs {
     /**
      * Read available Lab Activities.
      *
-     * @param scriptList found Lab Activities are places here
+     * @param scriptList found Lab Activities are placed here
      * @param context current context
      */
     static public void readScriptList(List<ScriptMetaData> scriptList, Context context) {
@@ -137,7 +140,48 @@ class ScriptDirs {
 
         for (File scriptDir : scriptDirs) {
             if (scriptDir.isDirectory())
+                convertTeXToLua(scriptDir);
                 readScriptsFromDir(scriptDir, scriptList);
+        }
+    }
+
+    private static void convertTeXToLua(File scriptDir) {
+        File[] children = scriptDir.listFiles();
+        for (File child : children != null ? children : new File[0]) {
+
+            String texName = child.getName();
+            if (!(texName.endsWith(".tex"))) continue;
+            String luaName = texName.substring(0, texName.length() - 4) + ".lua";
+
+            /* initialize reader */
+            FileReader reader;
+            try {
+                reader = new FileReader(texName);
+            } catch (FileNotFoundException e) {
+                Log.i(TAG, "Could not initialize reader for: " + texName, e);
+                continue;
+            }
+
+            /* initialize writer */
+            PrintWriter writer;
+            try {
+                writer = new PrintWriter(luaName);
+            } catch (FileNotFoundException e) {
+                Log.i(TAG, "Could not initialize writer for: " + luaName, e);
+                continue;
+            }
+
+            /* translate TeX to Lua */
+            LabLexer lexer = new LabLexer(reader);
+            LabParser parser = new LabParser(lexer);
+            Object dat = null;
+            try {
+                dat = parser.parse().value;
+            } catch (Exception e) {
+                Log.i(TAG, "Could not parse: " + texName, e);
+            }
+            writer.println(dat);
+            writer.close();
         }
     }
 
@@ -147,7 +191,7 @@ class ScriptDirs {
      * @param scriptDir the directory that should be searched
      * @param scripts found Lab Activities are places here
      */
-    static public void readScriptsFromDir(File scriptDir, List<ScriptMetaData> scripts) {
+    static void readScriptsFromDir(File scriptDir, List<ScriptMetaData> scripts) {
         File[] children = scriptDir.listFiles();
         for (File child : children != null ? children : new File[0]) {
             String name = child.getName();

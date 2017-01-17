@@ -3,7 +3,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.3'
+        classpath 'com.android.tools.build:gradle:2.2.3'
     }
 }
 
@@ -82,4 +82,5 @@ dependencies {
     compile 'com.android.support:support-annotations:20.0.0'
     compile 'com.android.support:support-v4:22.2.0'
     compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile files('src/main/java/nz/ac/auckland/lablet/lablex/java-cup-11b-runtime.jar')
 }
