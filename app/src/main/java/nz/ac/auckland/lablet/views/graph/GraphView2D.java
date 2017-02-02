@@ -164,6 +164,19 @@ public class GraphView2D extends PlotView {
         setAdapter(null);
     }
 
+    /**
+     * Sets linear fit data for this graph view.
+     *
+     * This method takes a preexisting linear fit painter and
+     * sets it in the graph view. It is important to note that
+     * this does not set linear fit data for the existing data
+     * in the view. Instead, the linear fit painter must be
+     * created separately, with its own data, and need not reflect
+     * the linear fit of the other data in the view.
+     *
+     * @param fitPainter    the painter to be added as the linear fit data
+     * @see                 LinearFitPainter
+     */
     public void setFitPainter(LinearFitPainter fitPainter) {
         if (this.fitPainter != null) {
             this.fitPainter.setDataAdapter(null);

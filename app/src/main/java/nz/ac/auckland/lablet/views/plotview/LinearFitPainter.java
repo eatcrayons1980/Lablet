@@ -9,16 +9,19 @@ package nz.ac.auckland.lablet.views.plotview;
 
 import android.graphics.*;
 
+import java.util.Locale;
+
 
 /**
  * Draws a linear fit of {@link AbstractXYDataAdapter} data.
  */
 public class LinearFitPainter extends AbstractPlotDataPainter {
-    class Fit {
+    private class Fit {
         private double b = 0;
         private double m = 0;
+        private double r = 0;
 
-        public void fit(AbstractXYDataAdapter data) {
+        void fit(AbstractXYDataAdapter data) {
             double sumX = 0;
             double sumY = 0;
             double sumXX = 0;
@@ -37,6 +40,30 @@ public class LinearFitPainter extends AbstractPlotDataPainter {
 
             m = (n * sumXY - sumX * sumY) / (n * sumXX - (sumX * sumX));
             b = (sumY - m * sumX) / n;
+            r = calcRSquared(data);
+        }
+
+        /**
+         * Calculates R-squared value for the linear fit.
+         *
+         * @param data  the XY data being considered
+         * @return      the coefficient of determination (R-squared)
+         */
+        private double calcRSquared(AbstractXYDataAdapter data) {
+            double yBar = 0;
+            double ss_tot = 0;
+            double ss_res = 0;
+            for (int i = 0; i < data.getSize(); i++) {
+                yBar += data.getY(i).doubleValue();
+            }
+            yBar /= data.getSize();
+            for (int i = 0; i < data.getSize(); i++) {
+                double y = data.getY(i).doubleValue();
+                double f = m * data.getX(i).doubleValue() + b;
+                ss_tot += (y - yBar) * (y - yBar);
+                ss_res += (y - f) * (y - f);
+            }
+            return 1 - (ss_res / ss_tot);
         }
 
         public double getB() {
@@ -48,7 +75,10 @@ public class LinearFitPainter extends AbstractPlotDataPainter {
         }
 
         public String getLabel() {
-            return "Linear Fit: b = " + String.format("%.4f", b) + ", m = " + String.format("%.4f", m);
+            return "Linear Fit: "
+                    + "b = " + String.format(Locale.US, "%.4f", b) + ", "
+                    + "m = " + String.format(Locale.US, "%.4f", m) + ", "
+                    + "r = " + String.format(Locale.US, "%.4f", r);
         }
     }
 
