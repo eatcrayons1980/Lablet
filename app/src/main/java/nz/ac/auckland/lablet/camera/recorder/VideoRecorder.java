@@ -334,7 +334,11 @@ public class VideoRecorder {
         // you will likely want to defer instantiation of CodecInputSurface until after the
         // "display" EGL context is created, then modify the eglCreateContext call to
         // take eglGetCurrentContext() as the share_context argument.
-        encoder = MediaCodec.createEncoderByType(MIME_TYPE);
+        try {
+            encoder = MediaCodec.createEncoderByType(MIME_TYPE);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         encoderInputSurface = encoder.createInputSurface();
         encoder.start();
