@@ -40,30 +40,7 @@ public class LinearFitPainter extends AbstractPlotDataPainter {
 
             m = (n * sumXY - sumX * sumY) / (n * sumXX - (sumX * sumX));
             b = (sumY - m * sumX) / n;
-            r = calcRSquared(data);
-        }
-
-        /**
-         * Calculates R-squared value for the linear fit.
-         *
-         * @param data  the XY data being considered
-         * @return      the coefficient of determination (R-squared)
-         */
-        private double calcRSquared(AbstractXYDataAdapter data) {
-            double yBar = 0;
-            double ss_tot = 0;
-            double ss_res = 0;
-            for (int i = 0; i < data.getSize(); i++) {
-                yBar += data.getY(i).doubleValue();
-            }
-            yBar /= data.getSize();
-            for (int i = 0; i < data.getSize(); i++) {
-                double y = data.getY(i).doubleValue();
-                double f = m * data.getX(i).doubleValue() + b;
-                ss_tot += (y - yBar) * (y - yBar);
-                ss_res += (y - f) * (y - f);
-            }
-            return 1 - (ss_res / ss_tot);
+            r = LinearFitHelper.calcRSquared((double x) -> m * x + b, data);
         }
 
         public double getB() {

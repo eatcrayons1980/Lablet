@@ -44,7 +44,7 @@ public class LuaScriptTest extends ActivityInstrumentationTestCase2<ScriptHomeAc
      */
     @SmallTest
     public void testScriptLoading() {
-        File dir = ScriptHomeActivity.getScriptDirectory(activity);
+        File dir = getScriptDirectory(activity);
         assertNotNull(dir);
 
         Context testContext = getInstrumentation().getContext();
@@ -71,7 +71,7 @@ public class LuaScriptTest extends ActivityInstrumentationTestCase2<ScriptHomeAc
     }
 
     private void copyResourceScripts(boolean overwriteExisting) {
-        File scriptDir = ScriptHomeActivity.getScriptDirectory(getInstrumentation().getContext());
+        File scriptDir = getScriptDirectory(getInstrumentation().getContext());
         if (!scriptDir.exists()) {
             if (!scriptDir.mkdir())
                 return;
