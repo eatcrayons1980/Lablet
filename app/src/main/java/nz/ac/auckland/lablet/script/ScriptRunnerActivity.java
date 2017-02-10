@@ -154,7 +154,7 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
     }
 
     /**
-     * Load a script that has bin stored in the given directory.
+     * Load a script that has been stored in the given directory.
      *
      * @param scriptUserDataDir directory where the user data is stored
      * @return the index of the last selected fragment or -1 if an error occurred
