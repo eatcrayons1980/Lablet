@@ -10,7 +10,10 @@ package nz.ac.auckland.lablet.script.components;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.*;
@@ -44,7 +47,11 @@ class TextComponent extends ScriptComponentViewHolder {
     @Override
     public View createView(Context context, android.support.v4.app.Fragment parent) {
         TextView textView = new TextView(context);
-        textView.setTextAppearance(context, android.R.style.TextAppearance_Medium);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            textView.setTextAppearance(android.R.style.TextAppearance_Medium);
+        } else {
+            textView.setTextAppearance(context, android.R.style.TextAppearance_Medium);
+        }
         textView.setTypeface(null, typeface);
         textView.setText(text);
         return textView;
@@ -71,8 +78,13 @@ class CheckBoxQuestion extends ScriptComponentViewHolder {
     @Override
     public View createView(Context context, android.support.v4.app.Fragment parent) {
         CheckBox view = new CheckBox(context);
-        view.setTextAppearance(context, android.R.style.TextAppearance_Medium);
-        view.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            view.setTextAppearance(android.R.style.TextAppearance_Medium);
+            view.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color, null));
+        } else {
+            view.setTextAppearance(context, android.R.style.TextAppearance_Medium);
+            view.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color));
+        }
         view.setText(text);
 
         if (getState() == ScriptTreeNode.SCRIPT_STATE_DONE)
@@ -119,8 +131,13 @@ class Question extends ScriptComponentViewHolder {
         ScriptTreeNodeSheetBase.Counter counter = this.component.getCounter("QuestionCounter");
 
         TextView textView = new TextView(context);
-        textView.setTextAppearance(context, android.R.style.TextAppearance_Medium);
-        textView.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            textView.setTextAppearance(android.R.style.TextAppearance_Medium);
+            textView.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color, null));
+        } else {
+            textView.setTextAppearance(context, android.R.style.TextAppearance_Medium);
+            textView.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color));
+        }
 
         textView.setText("Q" + counter.increaseValue() + ": " + text);
         return textView;
@@ -142,6 +159,7 @@ class Question extends ScriptComponentViewHolder {
  */
 class TextQuestion extends ScriptComponentViewHolder {
     private String text = "";
+    private Integer question_num = 0;
     private String answer = "";
     private boolean optional = false;
     private ScriptTreeNodeSheetBase component;
@@ -160,29 +178,36 @@ class TextQuestion extends ScriptComponentViewHolder {
     }
 
     @Override
-    public View createView(Context context, android.support.v4.app.Fragment parent) {
+    public View createView(Context context, Fragment parent) {
         ScriptTreeNodeSheetBase.Counter counter = this.component.getCounter("QuestionCounter");
 
-        // Note: we have to do this programmatically cause findViewById would find the wrong child items if there are
-        // more than one text question.
+        // Note: we have to do this programmatically because findViewById would find the wrong child
+        // items if there is more than one text question.
 
         LinearLayout layout = new LinearLayout(context);
         layout.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color));
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            layout.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color, null));
+        } else {
+            layout.setBackgroundColor(context.getResources().getColor(R.color.sc_question_background_color));
+        }
 
         TextView textView = new TextView(context);
         textView.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
-        textView.setTextAppearance(context, android.R.style.TextAppearance_Medium);
-        textView.setText("Q" + counter.increaseValue() + ": " + text);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            textView.setTextAppearance(android.R.style.TextAppearance_Medium);
+        } else {
+            textView.setTextAppearance(context, android.R.style.TextAppearance_Medium);
+        }
+        question_num = counter.increaseValue();
+        textView.setText("Q" + question_num + ": " + text);
 
         EditText editText = new EditText(context);
         editText.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
-        assert editText != null;
         editText.setText(answer);
         editText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -212,11 +237,35 @@ class TextQuestion extends ScriptComponentViewHolder {
         return true;
     }
 
+    /**
+     * Put the object data into a bundle.
+     *
+     * This information is saved to the user data for the app. To better identify the data, the
+     * question text and number is also saved in this bundle, even though it is not needed in the
+     * associated fromBundle method.
+     *
+     * If the answer is blank, the question text and number is not saved.
+     *
+     * @param bundle to store the component state in
+     */
     public void toBundle(Bundle bundle) {
+        if (!answer.equals("")) {
+            bundle.putString("question", text);
+            bundle.putInt("number", question_num);
+        }
         bundle.putString("answer", answer);
         super.toBundle(bundle);
     }
 
+    /**
+     * Get the object data from a bundle.
+     *
+     * Note that even though the question, number, and answer are all stored in the bundle, the
+     * answer is all that is needed.
+     *
+     * @param bundle that contains the component state
+     * @return true if the state was restored
+     */
     public boolean fromBundle(Bundle bundle) {
         answer = bundle.getString("answer", "");
         return super.fromBundle(bundle);
