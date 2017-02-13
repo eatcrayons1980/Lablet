@@ -8,7 +8,6 @@
 package nz.ac.auckland.lablet.script;
 
 import android.os.Bundle;
-import android.text.format.Time;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ public class Script {
         return userDataDirectory;
     }
 
-    public void setUserDataDirectory(File userDataDirectory) {
+    void setUserDataDirectory(File userDataDirectory) {
         this.userDataDirectory = userDataDirectory;
     }
 
@@ -42,7 +41,7 @@ public class Script {
      *
      * @param component root component tree
      */
-    public void setRoot(ScriptTreeNode component) {
+    void setRoot(ScriptTreeNode component) {
         root = component;
     }
 
@@ -82,7 +81,7 @@ public class Script {
      *
      * @return last error message
      */
-    public String getLastError() {
+    String getLastError() {
         return lastError;
     }
 
@@ -95,7 +94,7 @@ public class Script {
      */
     public List<ScriptTreeNode> getActiveChain() {
         if (root == null)
-            return new ArrayList<ScriptTreeNode>();
+            return new ArrayList<>();
 
         return root.getActiveChain();
     }
@@ -107,10 +106,8 @@ public class Script {
      * @return unique script id
      */
     static public String generateScriptUid(String scriptName) {
-        Time now = new Time(Time.getCurrentTimezone());
         CharSequence dateString = android.text.format.DateFormat.format("yyyy-MM-dd_HH-mm-ss", new java.util.Date());
 
-        now.setToNow();
         String newUid = "";
         newUid += dateString;
         if (!scriptName.equals("")) {
@@ -140,7 +137,7 @@ public class Script {
      * @param component the component that changed its state
      * @param state new state
      */
-    public void onComponentStateChanged(ScriptTreeNode component, int state) {
+    void onComponentStateChanged(ScriptTreeNode component, int state) {
         if (listener != null)
             listener.onComponentStateChanged(component, state);
     }
@@ -150,7 +147,7 @@ public class Script {
      * @param bundle archive the script should be stored in
      * @return false if an error occurred
      */
-    public boolean saveScriptState(Bundle bundle) {
+    boolean saveScriptState(Bundle bundle) {
         if (root == null)
             return false;
 
@@ -174,17 +171,19 @@ public class Script {
     }
 
     /**
-     * Restores a previously saved state of a script (also see {@link #saveScriptState}).
+     * Restores a previously saved state of a script.
      *
      * @param bundle saved state of the script
      * @return true if the state has been restored otherwise the error message is stored in {@link #lastError}
+     * @see {@link #saveScriptState(Bundle)}
      */
-    public boolean loadScriptState(Bundle bundle) {
+    boolean loadScriptState(Bundle bundle) {
         if (root == null)
             return false;
 
         String scriptId = ScriptTreeNode.getTreeHash(root);
-        if (!bundle.get("scriptId").equals(scriptId)) {
+        Object id = bundle.get("scriptId");
+        if (id == null || !id.equals(scriptId)) {
             lastError = "Script has been updated and is now incompatible to the saved state.";
             return false;
         }

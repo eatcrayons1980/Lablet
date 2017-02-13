@@ -7,21 +7,33 @@
  */
 package nz.ac.auckland.lablet.views.plotview;
 
-import android.animation.*;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PointF;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.view.*;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.animation.DecelerateInterpolator;
-import nz.ac.auckland.lablet.misc.DeviceIndependentPixel;
-import nz.ac.auckland.lablet.views.plotview.axes.*;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import nz.ac.auckland.lablet.misc.DeviceIndependentPixel;
+import nz.ac.auckland.lablet.views.plotview.axes.LabelPartitioner;
+import nz.ac.auckland.lablet.views.plotview.axes.LabelPartitionerLinear;
+import nz.ac.auckland.lablet.views.plotview.axes.LabelPartitionerLog10;
+import nz.ac.auckland.lablet.views.plotview.axes.XAxisView;
+import nz.ac.auckland.lablet.views.plotview.axes.YAxisView;
 
 
 class PlotGestureDetector {
@@ -33,11 +45,11 @@ class PlotGestureDetector {
 
     private boolean rangeChanging = false;
 
-    class DragDetector {
+    private class DragDetector {
         private boolean isDragging = false;
         public PointF point = new PointF(-1, -1);
 
-        public boolean onTouchEvent(MotionEvent event) {
+        boolean onTouchEvent(MotionEvent event) {
             if (event.getPointerCount() > 1) {
                 setDragging(false);
                 return false;
@@ -80,13 +92,12 @@ class PlotGestureDetector {
                     yRealDelta *= -1;
             }
 
-            if (xRealDelta != 0 || yRealDelta != 0)
-                return plotView.offsetRange(xRealDelta, yRealDelta);
-            return false;
+            return (xRealDelta != 0 || yRealDelta != 0)
+                    && plotView.offsetRange(xRealDelta, yRealDelta);
         }
     }
 
-    public PlotGestureDetector(Context context, final PlotView plotView, final RangeDrawingView rangeView) {
+    PlotGestureDetector(Context context, final PlotView plotView, final RangeDrawingView rangeView) {
         this.plotView = plotView;
         this.rangeView = rangeView;
 
@@ -144,7 +155,7 @@ class PlotGestureDetector {
         });
     }
 
-    public boolean onTouchEvent(MotionEvent event) {
+    boolean onTouchEvent(MotionEvent event) {
         boolean handled = false;
 
         if (plotView.isXDraggable() || plotView.isYDraggable())
@@ -168,13 +179,13 @@ public class PlotView extends ViewGroup {
     static public class Defaults {
         final static public int PEN_COLOR = Color.WHITE;
         // device independent size
-        final static public float TITLE_TEXT_SIZE_DP = 12;
-        final static public float LABEL_TEXT_SIZE_DP = 10;
+        final static float TITLE_TEXT_SIZE_DP = 12;
+        final static float LABEL_TEXT_SIZE_DP = 10;
     }
 
     public static class PlotScale {
         public IScale scale;
-        public LabelPartitioner labelPartitioner;
+        LabelPartitioner labelPartitioner;
     }
 
     static public PlotScale log10Scale() {
@@ -194,9 +205,14 @@ public class PlotView extends ViewGroup {
     private TitleView titleView;
     private XAxisView xAxisView;
     private YAxisView yAxisView;
-    private PlotPainterContainerView mainView;
+    protected PlotPainterContainerView mainView;
     private BackgroundPainter backgroundPainter;
     private RangeInfoPainter rangeInfoPainter;
+
+    final RectF titleRect;
+    final RectF xAxisRect;
+    final RectF yAxisRect;
+    final RectF mainViewRect;
 
     private float TITLE_TEXT_SIZE;
     private float LABEL_TEXT_SIZE;
@@ -222,7 +238,7 @@ public class PlotView extends ViewGroup {
         private ResizePolicy xPolicy = null;
         private ResizePolicy yPolicy = null;
 
-        public AutoRange(List<DataStatistics> dataStatisticsList, int behaviourX, int behaviourY) {
+        AutoRange(List<DataStatistics> dataStatisticsList, int behaviourX, int behaviourY) {
             setBehaviour(behaviourX, behaviourY);
 
             this.dataStatisticsList = dataStatisticsList;
@@ -231,7 +247,7 @@ public class PlotView extends ViewGroup {
 
         }
 
-        public boolean removePainter(IPlotPainter painter) {
+        boolean removePainter(IPlotPainter painter) {
             boolean result = mainView.removePlotPainter(painter);
 
             if (painter instanceof StrategyPainter) {
@@ -261,7 +277,7 @@ public class PlotView extends ViewGroup {
             return result;
         }
 
-        public RectF getDataLimits() {
+        RectF getDataLimits() {
             RectF limits = null;
             for (DataStatistics statistics : dataStatisticsList) {
                 RectF currentLimits = statistics.getDataLimits();
@@ -270,7 +286,7 @@ public class PlotView extends ViewGroup {
             return limits;
         }
 
-        public RectF getPreviousDataLimits() {
+        RectF getPreviousDataLimits() {
             RectF limits = null;
             for (DataStatistics statistics : dataStatisticsList) {
                 RectF currentLimits = statistics.getPreviousDataLimits();
@@ -442,7 +458,7 @@ public class PlotView extends ViewGroup {
                 yPolicy.onLimitsChanged(limits, oldRange, yFlipped);
         }
 
-        public void setBehaviour(int behaviourX, int behaviourY) {
+        void setBehaviour(int behaviourX, int behaviourY) {
             switch (behaviourX) {
                 case AUTO_RANGE_DISABLED:
                     xPolicy = null;
@@ -479,12 +495,20 @@ public class PlotView extends ViewGroup {
         super(context);
 
         init(context);
+        titleRect = new RectF();
+        xAxisRect = new RectF();
+        yAxisRect = new RectF();
+        mainViewRect = new RectF();
     }
 
     public PlotView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
         init(context);
+        titleRect = new RectF();
+        xAxisRect = new RectF();
+        yAxisRect = new RectF();
+        mainViewRect = new RectF();
     }
 
     private void init(Context context) {
@@ -730,31 +754,27 @@ public class PlotView extends ViewGroup {
         final private int DURATION = 300;
         private AnimatorSet animator = null;
 
-        public void animateXScroll(float offset) {
+        void animateXScroll(float offset) {
             // don't start a new animation; too frequent animations can stall the scrolling completely
             if (animator != null)
                 return;
             ValueAnimator valueAnimator = ObjectAnimator.ofFloat(mainView.getRangeLeft(), mainView.getRangeLeft()
                     + offset);
-            valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                public void onAnimationUpdate(ValueAnimator animation) {
-                    Float value = (Float) animation.getAnimatedValue();
-                    setXRange(value, value + mainView.getRangeRight() - mainView.getRangeLeft(), true);
-                }
+            valueAnimator.addUpdateListener(animation -> {
+                Float value = (Float) animation.getAnimatedValue();
+                setXRange(value, value + mainView.getRangeRight() - mainView.getRangeLeft(), true);
             });
             animate(valueAnimator);
         }
 
-        public void animateYScroll(float offset) {
+        void animateYScroll(float offset) {
             if (animator != null)
                 return;
             ValueAnimator valueAnimator = ObjectAnimator.ofFloat(mainView.getRangeBottom(), mainView.getRangeBottom()
                     + offset);
-            valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-                public void onAnimationUpdate(ValueAnimator animation) {
-                    Float value = (Float) animation.getAnimatedValue();
-                    setYRange(value, value + mainView.getRangeTop() - mainView.getRangeBottom(), true);
-                }
+            valueAnimator.addUpdateListener(animation -> {
+                Float value = (Float) animation.getAnimatedValue();
+                setYRange(value, value + mainView.getRangeTop() - mainView.getRangeBottom(), true);
             });
             animate(valueAnimator);
         }
@@ -888,12 +908,10 @@ public class PlotView extends ViewGroup {
             yAxisBottomOffset = yAxisView.getAxisBottomOffset();
         }
 
-        final RectF titleRect = new RectF(yAxisRight, 0, width, titleBottom);
-        final RectF xAxisRect = new RectF(yAxisRight - xAxisLeftOffset, xAxisTop, width, height);
-        final RectF yAxisRect = new RectF(0, Math.max(0, titleBottom - yAxisTopOffset), yAxisRight,
-                xAxisTop + yAxisBottomOffset);
-        final RectF mainViewRect = new RectF(yAxisRight, Math.max(titleBottom, yAxisTopOffset), width - xAxisRightOffset,
-                xAxisTop);
+        titleRect.set(yAxisRight, 0, width, titleBottom);
+        xAxisRect.set(yAxisRight - xAxisLeftOffset, xAxisTop, width, height);
+        yAxisRect.set(0, Math.max(0, titleBottom - yAxisTopOffset), yAxisRight, xAxisTop + yAxisBottomOffset);
+        mainViewRect.set(yAxisRight, Math.max(titleBottom, yAxisTopOffset), width - xAxisRightOffset, xAxisTop);
 
         if (hasTitle()) {
             titleView.measure(MeasureSpec.makeMeasureSpec((int)titleRect.width(), MeasureSpec.EXACTLY),

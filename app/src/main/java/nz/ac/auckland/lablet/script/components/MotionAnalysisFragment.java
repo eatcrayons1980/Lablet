@@ -10,6 +10,7 @@ package nz.ac.auckland.lablet.script.components;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,10 +18,13 @@ import android.widget.Button;
 import android.widget.CheckedTextView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.File;
+
 import nz.ac.auckland.lablet.ExperimentActivity;
 import nz.ac.auckland.lablet.ExperimentAnalysisActivity;
-import nz.ac.auckland.lablet.camera.MotionAnalysis;
 import nz.ac.auckland.lablet.R;
+import nz.ac.auckland.lablet.camera.MotionAnalysis;
 import nz.ac.auckland.lablet.script.Script;
 import nz.ac.auckland.lablet.script.ScriptComponent;
 import nz.ac.auckland.lablet.script.ScriptTreeNodeFragmentHolder;
@@ -28,8 +32,6 @@ import nz.ac.auckland.lablet.views.graph.GraphView2D;
 import nz.ac.auckland.lablet.views.graph.MarkerTimeGraphAdapter;
 import nz.ac.auckland.lablet.views.graph.XPositionMarkerGraphAxis;
 import nz.ac.auckland.lablet.views.graph.YPositionMarkerGraphAxis;
-
-import java.io.File;
 
 
 /**
@@ -39,7 +41,7 @@ class ScriptTreeNodeMotionAnalysis extends ScriptTreeNodeFragmentHolder {
     private ScriptExperimentRef experiment;
     private String descriptionText = "";
 
-    public ScriptTreeNodeMotionAnalysis(Script script) {
+    ScriptTreeNodeMotionAnalysis(Script script) {
         super(script);
     }
 
@@ -82,6 +84,7 @@ class ScriptTreeNodeMotionAnalysis extends ScriptTreeNodeFragmentHolder {
  */
 public class MotionAnalysisFragment extends ScriptComponentGenericFragment {
     static final int ANALYSE_EXPERIMENT = 0;
+    private static final String TAG = "MotionAnalysisFragment";
 
     private CheckedTextView takenExperimentInfo = null;
     private GraphView2D graphView = null;
@@ -104,37 +107,37 @@ public class MotionAnalysisFragment extends ScriptComponentGenericFragment {
 
         Button takeExperiment = (Button)child.findViewById(R.id.analyzeExperimentButton);
         assert takeExperiment != null;
-        takeExperiment.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getActivity(), ExperimentAnalysisActivity.class);
-                intent.putExtra(ExperimentActivity.PATH,
-                        ((ScriptTreeNodeMotionAnalysis) component).getExperiment().getExperimentPath());
+        takeExperiment.setOnClickListener(view1 -> {
+            Intent intent = new Intent(getActivity(), ExperimentAnalysisActivity.class);
+            intent.putExtra(ExperimentActivity.PATH,
+                    ((ScriptTreeNodeMotionAnalysis) component).getExperiment().getExperimentPath());
 
-                // motion analysis settings
-                Bundle motionAnalysisSettings = new Bundle();
-                motionAnalysisSettings.putBoolean(
-                        nz.ac.auckland.lablet.camera.MotionAnalysisFragment.FIRST_START_WITH_VIDEO_SETTINGS, true);
-                motionAnalysisSettings.putBoolean(
-                        nz.ac.auckland.lablet.camera.MotionAnalysisFragment.FIRST_START_WITH_VIDEO_SETTINGS_HELP, true);
-                motionAnalysisSettings.putBoolean(
-                        nz.ac.auckland.lablet.camera.MotionAnalysisFragment.OBJECT_TRACKING_ENABLED, false);
+            // motion analysis settings
+            Bundle motionAnalysisSettings = new Bundle();
+            motionAnalysisSettings.putBoolean(
+                    nz.ac.auckland.lablet.camera.MotionAnalysisFragment.FIRST_START_WITH_VIDEO_SETTINGS, true);
+            motionAnalysisSettings.putBoolean(
+                    nz.ac.auckland.lablet.camera.MotionAnalysisFragment.FIRST_START_WITH_VIDEO_SETTINGS_HELP, true);
+            motionAnalysisSettings.putBoolean(
+                    nz.ac.auckland.lablet.camera.MotionAnalysisFragment.OBJECT_TRACKING_ENABLED, false);
 
-                intent.putExtra(nz.ac.auckland.lablet.camera.MotionAnalysisFragment.MOTION_ANLYSIS_SETTINGS,
-                        motionAnalysisSettings);
-                startActivityForResult(intent, ANALYSE_EXPERIMENT);
-            }
+            intent.putExtra(nz.ac.auckland.lablet.camera.MotionAnalysisFragment.MOTION_ANLYSIS_SETTINGS,
+                    motionAnalysisSettings);
+            startActivityForResult(intent, ANALYSE_EXPERIMENT);
         });
 
-        takenExperimentInfo = (CheckedTextView)view.findViewById(R.id.takenExperimentInfo);
-        assert takenExperimentInfo != null;
+        if (view == null) {
+            Log.e(TAG, "View is null. Attempting to ignore this.");
+        } else {
+            takenExperimentInfo = (CheckedTextView) view.findViewById(R.id.takenExperimentInfo);
+            assert takenExperimentInfo != null;
 
-        File experimentPathFile = new File(analysisComponent.getExperiment().getExperimentPath());
-        takenExperimentInfo.setText(experimentPathFile.getName());
+            File experimentPathFile = new File(analysisComponent.getExperiment().getExperimentPath());
+            takenExperimentInfo.setText(experimentPathFile.getName());
 
-        graphView = (GraphView2D)view.findViewById(R.id.graphView);
-        assert graphView != null;
-
+            graphView = (GraphView2D) view.findViewById(R.id.graphView);
+            assert graphView != null;
+        }
         updateViews();
 
         return view;
@@ -172,13 +175,7 @@ public class MotionAnalysisFragment extends ScriptComponentGenericFragment {
     private boolean validateAnalysis() {
         ScriptExperimentRef experiment = ((ScriptTreeNodeMotionAnalysis)component).getExperiment();
         MotionAnalysis sensorAnalysis = experiment.getMotionAnalysis(0);
-        if (sensorAnalysis == null)
-            return false;
-
-        if (sensorAnalysis.getTagMarkers().getMarkerCount() < 3)
-            return false;
-
-        return true;
+        return sensorAnalysis != null && sensorAnalysis.getTagMarkers().getMarkerCount() >= 3;
     }
 
     @Override
