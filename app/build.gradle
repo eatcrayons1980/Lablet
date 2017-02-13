@@ -85,4 +85,5 @@ dependencies {
     compile 'edu.emory.mathcs:JTransforms:2.4'
     compile 'org.luaj:luaj-jse:3.0-beta2'
     compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile 'org.jetbrains:annotations:15.0'
 }

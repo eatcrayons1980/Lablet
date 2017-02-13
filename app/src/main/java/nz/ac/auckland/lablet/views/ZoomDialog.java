@@ -15,6 +15,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -26,6 +27,7 @@ import android.widget.FrameLayout;
  * Takes view and zooms it to a certain size. On tab it zooms back and closes.
  */
 public class ZoomDialog extends Dialog {
+    private static final String TAG = "ZoomDialog";
     private View contentView;
     private Rect startBounds;
     private Rect finalBounds;
@@ -39,7 +41,7 @@ public class ZoomDialog extends Dialog {
      * Dialog that open with size finalBounds and then zooms the content view from startBounds up to finalBounds.
      * TODO: Somehow it does not work to position the Dialog. So how it works at the moment is that the Dialog
      * goes fullscreen. Thus finalBounds must be the the fullscreen coordinates.
-     * @param context
+     * @param context context for zoom dialog
      * @param content A copy of the view that should be zoomed.
      * @param startBounds The current bounds of the view that should be zoomed.
      * @param finalBounds The target size of the zoomed view.
@@ -53,7 +55,12 @@ public class ZoomDialog extends Dialog {
 
         shortAnimationDuration = context.getResources().getInteger(android.R.integer.config_shortAnimTime);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        Window window = getWindow();
+        if (window == null) {
+            Log.e(TAG, "getWindow() returned null -- attempting to ignore this");
+        } else {
+            window.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
 
         frameLayout = new FrameLayout(context);
         setContentView(frameLayout);
@@ -61,8 +68,12 @@ public class ZoomDialog extends Dialog {
                 FrameLayout.LayoutParams.WRAP_CONTENT);
         frameLayout.addView(contentView, params);
 
-        getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT);
+        if (window == null) {
+            Log.e(TAG, "getWindow() returned null -- attempting to ignore this");
+        } else {
+            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT);
+        }
 
 
         setupZoomAnimation();
@@ -90,38 +101,35 @@ public class ZoomDialog extends Dialog {
             this.startBounds.bottom += deltaHeight;
         }
 
-        frameLayout.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (animator != null)
-                    animator.cancel();
+        frameLayout.setOnClickListener(view -> {
+            if (animator != null)
+                animator.cancel();
 
-                // Animate the four positioning/sizing properties in parallel,
-                // back to their original values.
-                AnimatorSet set = new AnimatorSet();
-                set.play(ObjectAnimator.ofFloat(contentView, View.X, startBounds.left))
-                        .with(ObjectAnimator.ofFloat(contentView, View.Y, startBounds.top))
-                        .with(ObjectAnimator.ofFloat(contentView, View.SCALE_X, startScale))
-                        .with(ObjectAnimator.ofFloat(contentView, View.SCALE_Y, startScale))
-                        .with(ObjectAnimator.ofFloat(contentView, View.ALPHA, 1f, 0.3f));
-                set.setDuration(shortAnimationDuration);
-                set.setInterpolator(new DecelerateInterpolator());
-                set.addListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        animator = null;
-                        dismiss();
-                    }
+            // Animate the four positioning/sizing properties in parallel,
+            // back to their original values.
+            AnimatorSet set = new AnimatorSet();
+            set.play(ObjectAnimator.ofFloat(contentView, View.X, startBounds.left))
+                    .with(ObjectAnimator.ofFloat(contentView, View.Y, startBounds.top))
+                    .with(ObjectAnimator.ofFloat(contentView, View.SCALE_X, startScale))
+                    .with(ObjectAnimator.ofFloat(contentView, View.SCALE_Y, startScale))
+                    .with(ObjectAnimator.ofFloat(contentView, View.ALPHA, 1f, 0.3f));
+            set.setDuration(shortAnimationDuration);
+            set.setInterpolator(new DecelerateInterpolator());
+            set.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    animator = null;
+                    dismiss();
+                }
 
-                    @Override
-                    public void onAnimationCancel(Animator animation) {
-                        animator = null;
-                        dismiss();
-                    }
-                });
-                set.start();
-                animator = set;
-            }
+                @Override
+                public void onAnimationCancel(Animator animation) {
+                    animator = null;
+                    dismiss();
+                }
+            });
+            set.start();
+            animator = set;
         });
     }
 
