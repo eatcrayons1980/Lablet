@@ -7,10 +7,6 @@ Build
 ----
 Lablet is developed using Intellij IDEA / Android Studio. If you want to build Lablet on your own best use one of these IDEs. Lablet uses Gradle as a build system. Please make sure that you installed the Android SDK and configured it correctly.
 
-Dependencies
----
-Lablet depends on OpenCV for Android to provide object tracking functionality. Lablet will ask the user to install OpenCV Manager the first time Lablet executes.
-
 Links
 ----
 
