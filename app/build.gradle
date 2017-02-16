@@ -75,15 +75,19 @@ repositories {
     maven {
         url 'https://raw.github.com/vRallev/mvn-repo/master/'
     }
+    maven {
+        url 'http://dl.bintray.com/steveliles/maven'
+    }
 }
 
 dependencies {
     compile 'com.android.support:support-v4:25.1.1'
     compile 'com.android.support:support-annotations:25.1.1'
-    compile 'org.opencv:opencv-android:2.4.8'
+    // OpenCV libraries from: https://github.com/steveliles/opencv-android
+    compile 'org.opencv:OpenCV-Android:3.1.0'
     compile 'au.com.bytecode:opencsv:2.4'
     compile 'edu.emory.mathcs:JTransforms:2.4'
     compile 'org.luaj:luaj-jse:3.0-beta2'
-    compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'org.jetbrains:annotations:15.0'
 }
+

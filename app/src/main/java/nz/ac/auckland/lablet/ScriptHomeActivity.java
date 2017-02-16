@@ -10,35 +10,40 @@ package nz.ac.auckland.lablet;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.*;
-import android.widget.*;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.ListView;
+import android.widget.PopupMenu;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.Scalar;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import nz.ac.auckland.lablet.misc.NaturalOrderComparator;
 import nz.ac.auckland.lablet.misc.StorageLib;
 import nz.ac.auckland.lablet.script.LuaScriptLoader;
-import nz.ac.auckland.lablet.script.ScriptMetaData;
-import nz.ac.auckland.lablet.views.*;
 import nz.ac.auckland.lablet.script.Script;
+import nz.ac.auckland.lablet.script.ScriptMetaData;
 import nz.ac.auckland.lablet.script.ScriptRunnerActivity;
-
-import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import nz.ac.auckland.lablet.views.CheckBoxAdapter;
+import nz.ac.auckland.lablet.views.CheckBoxListEntry;
+import nz.ac.auckland.lablet.views.ExportDirDialog;
+import nz.ac.auckland.lablet.views.InfoBarBackgroundDrawable;
+import nz.ac.auckland.lablet.views.InfoSideBar;
 
 
 /**
@@ -53,7 +58,7 @@ class ScriptDirs {
      * @param context the context
      * @return the script directory File
      */
-    static public File getScriptDirectory(Context context) {
+    static private File getScriptDirectory(Context context) {
         File baseDir = context.getExternalFilesDir(null);
         File scriptDir = new File(baseDir, "scripts");
         if (!scriptDir.exists() && !scriptDir.mkdir())
@@ -61,11 +66,11 @@ class ScriptDirs {
         return scriptDir;
     }
 
-    static public File getResourceScriptDir(Context context) {
+    static private File getResourceScriptDir(Context context) {
         return new File(getScriptDirectory(context), "demo");
     }
 
-    static public File getRemoteScriptDir(Context context) {
+    static File getRemoteScriptDir(Context context) {
         return new File(getScriptDirectory(context), "remotes");
     }
 
@@ -75,7 +80,7 @@ class ScriptDirs {
      * @param activity the current activity
      * @param forceCopy overwrite existing Lab Activities
      */
-    static public void copyResourceScripts(Activity activity, boolean forceCopy) {
+    static void copyResourceScripts(Activity activity, boolean forceCopy) {
         SharedPreferences settings = activity.getSharedPreferences(PREFERENCES_NAME, 0);
         if (!forceCopy && settings.getBoolean(SCRIPTS_COPIED_KEY, false))
             return;
@@ -115,10 +120,8 @@ class ScriptDirs {
         settings.edit().putBoolean(SCRIPTS_COPIED_KEY, true).apply();
     }
 
-    static public boolean isLuaFile(String name) {
-        if (name.length() < 5)
-            return false;
-        return name.lastIndexOf(".lua") == name.length() - 4;
+    static boolean isLuaFile(String name) {
+        return name.length() >= 5 && name.lastIndexOf(".lua") == name.length() - 4;
     }
 
 
@@ -128,7 +131,7 @@ class ScriptDirs {
      * @param scriptList found Lab Activities are places here
      * @param context current context
      */
-    static public void readScriptList(List<ScriptMetaData> scriptList, Context context) {
+    static void readScriptList(List<ScriptMetaData> scriptList, Context context) {
         File[] scriptDirs = {
                 getScriptDirectory(context),
                 getResourceScriptDir(context),
@@ -147,7 +150,7 @@ class ScriptDirs {
      * @param scriptDir the directory that should be searched
      * @param scripts found Lab Activities are places here
      */
-    static public void readScriptsFromDir(File scriptDir, List<ScriptMetaData> scripts) {
+    static void readScriptsFromDir(File scriptDir, List<ScriptMetaData> scripts) {
         File[] children = scriptDir.listFiles();
         for (File child : children != null ? children : new File[0]) {
             String name = child.getName();
@@ -184,35 +187,6 @@ public class ScriptHomeActivity extends Activity {
 
     final static private int START_SCRIPT = 1;
 
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch(status) {
-                case LoaderCallbackInterface.SUCCESS:
-                    Log.i(TAG,"OpenCV Manager Connected");
-                    //from now onwards, you can use OpenCV API
-                    Mat m = new Mat(5, 10, CvType.CV_8UC1, new Scalar(0));
-                    break;
-                case LoaderCallbackInterface.INIT_FAILED:
-                    Log.i(TAG,"Init Failed");
-                    break;
-                case LoaderCallbackInterface.INSTALL_CANCELED:
-                    Log.i(TAG,"Install Cancelled");
-                    break;
-                case LoaderCallbackInterface.INCOMPATIBLE_MANAGER_VERSION:
-                    Log.i(TAG,"Incompatible Version");
-                    break;
-                case LoaderCallbackInterface.MARKET_ERROR:
-                    Log.i(TAG,"Market Error");
-                    break;
-                default:
-                    Log.i(TAG,"OpenCV Manager Install");
-                    super.onManagerConnected(status);
-                    break;
-            }
-        }
-    };
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         menu.clear();
@@ -220,82 +194,62 @@ public class ScriptHomeActivity extends Activity {
 
         // script options
         MenuItem scriptOptions = menu.findItem(R.id.action_script_options);
-        assert (scriptOptions != null);
-        scriptOptions.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                showScriptMenu();
-                return true;
-            }
+        if (BuildConfig.DEBUG && scriptOptions == null)
+            throw new RuntimeException("scriptOptions is null");
+        scriptOptions.setOnMenuItemClickListener(menuItem -> {
+            showScriptMenu();
+            return true;
         });
 
         // to stand alone experiment screen
         MenuItem standAlone = menu.findItem(R.id.action_stand_alone);
-        assert(standAlone != null);
-        standAlone.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                startStandAloneExperimentActivity();
-                return true;
-            }
+        if (BuildConfig.DEBUG && standAlone == null)
+            throw new RuntimeException("standAlone is null");
+        standAlone.setOnMenuItemClickListener(menuItem -> {
+            startStandAloneExperimentActivity();
+            return true;
         });
 
         // info item
         MenuItem infoItem = menu.findItem(R.id.action_info);
-        assert(infoItem != null);
+        if (BuildConfig.DEBUG && infoItem == null)
+            throw new RuntimeException("infoItem is null");
         String versionString = InfoHelper.getVersionString(this);
         infoItem.setTitle(versionString);
         infoAlertBox = InfoHelper.createAlertInfoBox(this);
-        infoItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                infoAlertBox.show();
-                return true;
-            }
+        infoItem.setOnMenuItemClickListener(menuItem -> {
+            infoAlertBox.show();
+            return true;
         });
 
         // delete item
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
+        builder.setNegativeButton("No", (dialogInterface, i) -> {
 
-            }
         });
         builder.setTitle("Really delete the selected script data?");
-        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                deleteSelectedExistingScript();
-            }
-        });
+        builder.setPositiveButton("Yes", (dialogInterface, i) -> deleteSelectedExistingScript());
 
         deleteScriptDataAlertBox = builder.create();
 
         deleteItem = menu.findItem(R.id.action_delete);
         assert deleteItem != null;
         deleteItem.setVisible(false);
-        deleteItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                if (!isAtLeastOneExistingScriptSelected())
-                    return false;
-                deleteScriptDataAlertBox.show();
-                return true;
-            }
+        deleteItem.setOnMenuItemClickListener(menuItem -> {
+            if (!isAtLeastOneExistingScriptSelected())
+                return false;
+            deleteScriptDataAlertBox.show();
+            return true;
         });
 
         exportItem = menu.findItem(R.id.action_mail);
         assert exportItem != null;
         exportItem.setVisible(false);
-        exportItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                if (!isAtLeastOneExistingScriptSelected())
-                    return false;
-                exportSelection();
-                return true;
-            }
+        exportItem.setOnMenuItemClickListener(menuItem -> {
+            if (!isAtLeastOneExistingScriptSelected())
+                return false;
+            exportSelection();
+            return true;
         });
 
         return super.onPrepareOptionsMenu(menu);
@@ -357,23 +311,17 @@ public class ScriptHomeActivity extends Activity {
         ListView scriptListView = (ListView)findViewById(R.id.scriptList);
         scriptListView.setBackgroundColor(listBackgroundColor);
         scriptListView.setAdapter(scriptListAdaptor);
-        scriptListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                ScriptMetaData metaData = scriptList.get(i);
-                startScript(metaData);
-            }
+        scriptListView.setOnItemClickListener((adapterView, view, i, l) -> {
+            ScriptMetaData metaData = scriptList.get(i);
+            startScript(metaData);
         });
 
         // existing experiment list
         selectAllCheckBox = (CheckBox)findViewById(R.id.checkBoxSelectAll);
-        selectAllCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                for (CheckBoxListEntry entry : existingScriptList)
-                    entry.setSelected(b);
-                existingScriptListAdaptor.notifyDataSetChanged();
-            }
+        selectAllCheckBox.setOnCheckedChangeListener((compoundButton, b) -> {
+            for (CheckBoxListEntry entry : existingScriptList)
+                entry.setSelected(b);
+            existingScriptListAdaptor.notifyDataSetChanged();
         });
 
         ListView existingScriptListView = (ListView)findViewById(R.id.existingScriptListView);
@@ -382,20 +330,12 @@ public class ScriptHomeActivity extends Activity {
         existingScriptListAdaptor = new CheckBoxAdapter(this, R.layout.check_box_list_item, existingScriptList);
         existingScriptListView.setAdapter(existingScriptListAdaptor);
 
-        existingScriptListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                String id = existingScriptList.get(i).getName();
-                loadPreviousScript(id);
-            }
+        existingScriptListView.setOnItemClickListener((adapterView, view, i, l) -> {
+            String id = existingScriptList.get(i).getName();
+            loadPreviousScript(id);
         });
 
-        checkBoxListEntryListener = new CheckBoxListEntry.OnCheckBoxListEntryListener() {
-            @Override
-            public void onSelected(CheckBoxListEntry entry) {
-                updateSelectedMenuItem();
-            }
-        };
+        checkBoxListEntryListener = entry -> updateSelectedMenuItem();
 
         ScriptDirs.copyResourceScripts(this, false);
     }
@@ -407,19 +347,16 @@ public class ScriptHomeActivity extends Activity {
         PopupMenu popup = new PopupMenu(this, parent);
         MenuInflater inflater = popup.getMenuInflater();
         inflater.inflate(R.menu.script_popup, popup.getMenu());
-        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                switch (menuItem.getItemId()) {
-                    case R.id.scriptManager:
-                        Intent intent = new Intent(that, ScriptManagerActivity.class);
-                        startActivity(intent);
-                        return true;
-                    default:
-                        return false;
-                }
-
+        popup.setOnMenuItemClickListener(menuItem -> {
+            switch (menuItem.getItemId()) {
+                case R.id.scriptManager:
+                    Intent intent = new Intent(that, ScriptManagerActivity.class);
+                    startActivity(intent);
+                    return true;
+                default:
+                    return false;
             }
+
         });
         popup.show();
     }
@@ -431,9 +368,6 @@ public class ScriptHomeActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
-
-        //initialize OpenCV manager
-        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mLoaderCallback);
 
         selectAllCheckBox.setChecked(false);
         invalidateOptionsMenu();
@@ -501,12 +435,7 @@ public class ScriptHomeActivity extends Activity {
         scriptList.clear();
         ScriptDirs.readScriptList(scriptList, this);
 
-        Collections.sort(scriptList, new Comparator<ScriptMetaData>() {
-            @Override
-            public int compare(ScriptMetaData metaData, ScriptMetaData metaData2) {
-                return metaData.getTitle().compareTo(metaData2.getTitle());
-            }
-        });
+        Collections.sort(scriptList, (metaData, metaData2) -> metaData.getTitle().compareTo(metaData2.getTitle()));
 
         scriptListAdaptor.notifyDataSetChanged();
     }
@@ -514,7 +443,7 @@ public class ScriptHomeActivity extends Activity {
     private void updateExistingScriptList() {
         existingScriptList.clear();
         File scriptDir = getScriptUserDataDir(this);
-        if (scriptDir.isDirectory()) {
+        if (scriptDir != null && scriptDir.isDirectory() && scriptDir.listFiles() != null) {
             List<String> children = new ArrayList<>();
             for (File file : scriptDir.listFiles())
                 children.add(file.getName());
