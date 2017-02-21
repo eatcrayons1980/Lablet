@@ -173,7 +173,7 @@ class ScriptDirs {
 public class ScriptHomeActivity extends Activity {
     static final public String REMOTE_TYPE = "remote";
     static final private String TAG = "OpenCV";
-
+    final static private int START_SCRIPT = 1;
     private List<ScriptMetaData> scriptList = null;
     private ArrayAdapter<ScriptMetaData> scriptListAdaptor = null;
     private ArrayList<CheckBoxListEntry> existingScriptList = null;
@@ -185,7 +185,20 @@ public class ScriptHomeActivity extends Activity {
     private AlertDialog infoAlertBox = null;
     private CheckBox selectAllCheckBox = null;
 
-    final static private int START_SCRIPT = 1;
+    /**
+     * The script user data is the directory that contains the stored script state, i.e., the
+     * results.
+     *
+     * @param context the context
+     * @return the script user data
+     */
+    static public File getScriptUserDataDir(Context context) {
+        File baseDir = context.getExternalFilesDir(null);
+        File scriptDir = new File(baseDir, "script_user_data");
+        if (!scriptDir.exists() && !scriptDir.mkdir())
+            return null;
+        return scriptDir;
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -368,25 +381,13 @@ public class ScriptHomeActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+        ((Lablet) getApplication()).ensurePrivacyPolicy(this);
 
         selectAllCheckBox.setChecked(false);
         invalidateOptionsMenu();
 
         updateScriptList();
         updateExistingScriptList();
-    }
-
-    /**
-     * The script user data is the directory that contains the stored script state, i.e., the results.
-     * @param context the context
-     * @return the script user data
-     */
-    static public File getScriptUserDataDir(Context context) {
-        File baseDir = context.getExternalFilesDir(null);
-        File scriptDir = new File(baseDir, "script_user_data");
-        if (!scriptDir.exists() && !scriptDir.mkdir())
-            return null;
-        return scriptDir;
     }
 
     private boolean isAtLeastOneExistingScriptSelected() {
