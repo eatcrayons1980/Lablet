@@ -188,6 +188,12 @@ public final class FileHelper {
         return true;
     }
 
+    /**
+     * Accepts {@link String} objects ending in '.lua'
+     *
+     * @param name file name to test
+     * @return true if {@link String} ends in '.lua'
+     */
     @Contract("null -> false")
     public static boolean isLuaFile(@Nullable String name) {
         return name != null && name.length() >= 5 && name.lastIndexOf(".lua") == name.length() - 4;
