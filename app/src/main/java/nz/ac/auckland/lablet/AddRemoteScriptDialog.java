@@ -15,16 +15,28 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.*;
-import nz.ac.auckland.lablet.misc.StorageLib;
-import nz.ac.auckland.lablet.misc.StreamHelper;
-
-import java.io.*;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.List;
+import nz.ac.auckland.lablet.misc.StorageLib;
+import nz.ac.auckland.lablet.misc.StreamHelper;
+import nz.ac.auckland.lablet.utility.FileHelper;
 
 
 /**
@@ -156,7 +168,7 @@ public class AddRemoteScriptDialog extends AlertDialog {
 
                 if (validUrl) {
                     String name = new File(url.getPath()).getName();
-                    if (!ScriptDirs.isLuaFile(name))
+                    if (!FileHelper.isLuaFile(name))
                         validUrl = false;
                 }
 

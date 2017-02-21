@@ -27,13 +27,10 @@ import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
 import nz.ac.auckland.lablet.experiment.ExperimentHelper;
 import nz.ac.auckland.lablet.experiment.ExperimentPluginFactory;
 import nz.ac.auckland.lablet.experiment.IImportPlugin;
@@ -414,10 +411,15 @@ public class ExperimentHomeActivity extends Activity {
         experimentList.clear();
         File experimentDir = ExperimentAnalysisBaseActivity.getDefaultExperimentBaseDir(this);
         if (experimentDir.isDirectory()) {
-            List<File> children = Arrays.asList(experimentDir.listFiles());
+            List<String> children = new ArrayList<>();
+            for (File file : experimentDir.listFiles()) {
+                children.add(file.getName());
+            }
             Collections.sort(children, Collections.reverseOrder(new NaturalOrderComparator()));
-            for (File child : children)
-                experimentList.add(new CheckBoxListEntry(child.getName(), checkBoxListEntryListener));
+            //noinspection Convert2streamapi
+            for (String child : children) {
+                experimentList.add(new CheckBoxListEntry(child, checkBoxListEntryListener));
+            }
         }
 
         experimentListAdaptor.notifyDataSetChanged();
