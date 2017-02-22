@@ -197,9 +197,9 @@ class ScriptDirs {
  */
 public class ScriptHomeActivity extends Activity {
 
-    @NonNull
-    static final public String REMOTE_TYPE = "remote";
+    final static public String REMOTE_TYPE = "remote";
     final static private int START_SCRIPT = 1;
+
     @NonNull
     private List<ScriptMetaData> scriptList = new ArrayList<>();
     @Nullable
