@@ -9,6 +9,7 @@ package nz.ac.auckland.lablet.experiment;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import nz.ac.auckland.lablet.ExperimentActivity;
 import nz.ac.auckland.lablet.misc.PersistentBundle;
 import org.xmlpull.v1.XmlPullParserException;
@@ -21,7 +22,10 @@ import java.util.List;
  * Abstract base class for experiment plugins.
  */
 public class ExperimentHelper {
+    @Nullable
     static public ExperimentData loadExperimentData(String experimentMainDir) {
+        if (experimentMainDir.equals(""))
+            return null;
         ExperimentData experimentData = new ExperimentData();
         if (!experimentData.load(new File(experimentMainDir, "data")))
             return experimentData;

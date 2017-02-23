@@ -77,6 +77,8 @@ public class ScriptComponentContainer<ItemType extends ScriptComponent>
 
     private boolean calculateAllItemsDone() {
         for (ScriptComponent item : items) {
+            if (item.isOptional)
+                continue;
             if (item.getState() < 0)
                 return false;
         }

@@ -129,11 +129,21 @@ public class MotionAnalysisFragment extends ScriptComponentGenericFragment {
         if (view == null) {
             Log.e(TAG, "View is null. Attempting to ignore this.");
         } else {
+            final String experimentPath = analysisComponent.getExperiment().getExperimentPath();
+
             takenExperimentInfo = (CheckedTextView) view.findViewById(R.id.takenExperimentInfo);
             assert takenExperimentInfo != null;
 
-            File experimentPathFile = new File(analysisComponent.getExperiment().getExperimentPath());
-            takenExperimentInfo.setText(experimentPathFile.getName());
+            if (experimentPath.equals("")) {
+                Log.i(TAG, "No data for this experiment.");
+                takenExperimentInfo.setText(R.string.text_missing_experiment_data);
+                takeExperiment.setEnabled(false);
+                setState(ScriptComponent.SCRIPT_STATE_DONE);
+                onStateChanged(this.component, 0);
+            } else {
+                File experimentPathFile = new File(experimentPath);
+                takenExperimentInfo.setText(experimentPathFile.getName());
+            }
 
             graphView = (GraphView2D) view.findViewById(R.id.graphView);
             assert graphView != null;
@@ -168,8 +178,11 @@ public class MotionAnalysisFragment extends ScriptComponentGenericFragment {
     public void onResume() {
         super.onResume();
 
-        if (component.getState() >= ScriptComponent.SCRIPT_STATE_DONE && !validateAnalysis())
+        if (((ScriptTreeNodeMotionAnalysis) component).getExperiment().getExperimentPath().equals("")) {
+            setState((ScriptComponent.SCRIPT_STATE_DONE));
+        } else if (component.getState() >= ScriptComponent.SCRIPT_STATE_DONE && !validateAnalysis()) {
             setState(ScriptComponent.SCRIPT_STATE_ONGOING);
+        }
     }
 
     private boolean validateAnalysis() {

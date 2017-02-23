@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentActivity;
 import nz.ac.auckland.lablet.experiment.*;
 
@@ -22,6 +23,7 @@ import java.io.*;
  * Abstract base class for activities that analyze an experiment.
  */
 abstract public class ExperimentAnalysisBaseActivity extends FragmentActivity {
+    @Nullable
     protected ExperimentAnalysis experimentAnalysis;
 
     @Override
@@ -31,14 +33,13 @@ abstract public class ExperimentAnalysisBaseActivity extends FragmentActivity {
         ensureExperimentDataLoaded();
     }
 
+    @Nullable
     public ExperimentAnalysis getExperimentAnalysis() {
         return experimentAnalysis;
     }
 
     public boolean ensureExperimentDataLoaded() {
-        if (experimentAnalysis != null)
-            return true;
-        return loadExperiment();
+        return experimentAnalysis != null || loadExperiment();
     }
 
     private boolean loadExperiment() {
@@ -49,6 +50,12 @@ abstract public class ExperimentAnalysisBaseActivity extends FragmentActivity {
         String analysisId = intent.getStringExtra(ExperimentAnalysis.AnalysisRef.ANALYSIS_UID_KEY);
 
         ExperimentData experimentData = ExperimentHelper.loadExperimentData(experimentPath);
+
+        if (experimentData == null) {
+            experimentAnalysis = null;
+            return false;
+        }
+
         if (!experimentData.getLoadError().equals("")) {
             showErrorAndFinish(experimentData.getLoadError());
             return false;

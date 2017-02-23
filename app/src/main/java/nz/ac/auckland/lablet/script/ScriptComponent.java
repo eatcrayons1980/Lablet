@@ -25,6 +25,8 @@ abstract public class ScriptComponent {
     final static public int SCRIPT_STATE_ONGOING = -1;
     final static public int SCRIPT_STATE_DONE = 0;
 
+    public boolean isOptional;
+
     /**
      * Listener interface for the component state.
      */
@@ -59,7 +61,7 @@ abstract public class ScriptComponent {
     }
 
     public int getState() {
-        return state;
+        return isOptional ? SCRIPT_STATE_DONE : state;
     }
 
     /**

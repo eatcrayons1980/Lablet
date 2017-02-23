@@ -31,7 +31,7 @@ import nz.ac.auckland.lablet.script.Script;
 
 
 /**
- * Script component that has view for starting  a camera experiment.
+ * Script component that has view for starting a camera experiment.
  */
 public class CameraExperiment extends SingleExperimentBase {
 
