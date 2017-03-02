@@ -43,6 +43,7 @@ public class CameraExperiment extends SingleExperimentBase {
     public CameraExperiment(Script script) {
         super(script);
         setDescriptionText("Please take a video:");
+        experiment.setExperimentPath(script.getUserDataDirectory().getPath());
     }
 
     @Override
