@@ -7,12 +7,16 @@
  */
 package nz.ac.auckland.lablet.camera.recorder;
 
+import static android.opengl.GLU.gluErrorString;
+
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.util.Log;
 
 
 class TextureCreator {
+    private static final String TAG = "TextureCreator";
+
     public static int create() {
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
@@ -36,9 +40,11 @@ class TextureCreator {
 
     public static void checkGlError(String op) {
         int error;
-        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
-            Log.e("Texture", op + ": glError " + error);
-            throw new RuntimeException(op + ": glError " + error);
+        if ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
+            Log.e(TAG, op + ": glError " + gluErrorString(error));
+            // it doesn't make sense to crash the app just because there is an error.
+            // better to let the app crash when it can no longer carry on.
+            // throw new RuntimeException(op + ": glError " + gluErrorString(error));
         }
     }
 }
