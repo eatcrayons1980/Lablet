@@ -7,6 +7,8 @@
  */
 package nz.ac.auckland.lablet.camera.recorder;
 
+import static nz.ac.auckland.lablet.utility.OpenGLHelper.checkGlError;
+
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
@@ -21,7 +23,7 @@ import java.nio.FloatBuffer;
  * Code for rendering a texture onto a surface using OpenGL ES 2.0.
  */
 public class TextureRender {
-    private static final String TAG = "TextureRender";
+    private static final String TAG = "RecorderTextureRender";
 
     private static final int FLOAT_SIZE_BYTES = 4;
     private static final int TRIANGLE_VERTICES_DATA_STRIDE_BYTES = 5 * FLOAT_SIZE_BYTES;
@@ -184,14 +186,6 @@ public class TextureRender {
             program = 0;
         }
         return program;
-    }
-
-    public static void checkGlError(String op) {
-        int error;
-        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
-            Log.e(TAG, op + ": glError " + error);
-            throw new RuntimeException(op + ": glError " + error);
-        }
     }
 
     public static void checkLocation(int location, String label) {
