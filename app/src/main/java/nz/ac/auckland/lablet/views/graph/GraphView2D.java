@@ -10,27 +10,21 @@ package nz.ac.auckland.lablet.views.graph;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.PointF;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.Toast;
-
-import org.opencv.core.Point;
-
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
 import nz.ac.auckland.lablet.misc.Unit;
 import nz.ac.auckland.lablet.script.ScriptRunnerActivity;
 import nz.ac.auckland.lablet.utility.FileHelper;
 import nz.ac.auckland.lablet.views.ZoomDialog;
-import nz.ac.auckland.lablet.views.marker.MarkerDataModel;
 import nz.ac.auckland.lablet.views.plotview.AbstractXYDataAdapter;
 import nz.ac.auckland.lablet.views.plotview.BufferedDirectStrategyPainter;
 import nz.ac.auckland.lablet.views.plotview.CloneablePlotDataAdapter;
@@ -40,6 +34,7 @@ import nz.ac.auckland.lablet.views.plotview.Region1D;
 import nz.ac.auckland.lablet.views.plotview.StrategyPainter;
 import nz.ac.auckland.lablet.views.plotview.XYConcurrentPainter;
 import nz.ac.auckland.lablet.views.plotview.XYDataAdapter;
+import org.opencv.core.Point;
 
 
 /**
@@ -237,12 +232,9 @@ public class GraphView2D extends PlotView {
 
         if (csvFileWriter != null) {
             // save data points to CSV file
-            MarkerDataModel dataModel = ((MarkerGraphAdapter) adapter).data;
             List<Point> dataPoints = new ArrayList<>();
-            PointF pointF;
-            for (int i = 0; i < dataModel.getMarkerCount(); i++) {
-                pointF = dataModel.getMarkerDataAt(i).getPosition();
-                dataPoints.add(new Point(pointF.x, pointF.y));
+            for (int i = 0; i < adapter.getSize(); i++) {
+                dataPoints.add(new Point(adapter.getX(i).floatValue(), adapter.getY(i).floatValue()));
             }
             FileHelper.writePlotDataToCSV(dataPoints, csvFileWriter);
         }

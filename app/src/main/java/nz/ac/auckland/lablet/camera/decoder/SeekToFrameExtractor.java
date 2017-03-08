@@ -8,18 +8,25 @@
 package nz.ac.auckland.lablet.camera.decoder;
 
 import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecInfo.CodecCapabilities;
+import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
+import android.util.Log;
 import android.view.Surface;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Semaphore;
+import org.jetbrains.annotations.Contract;
 
 
 /**
@@ -88,6 +95,7 @@ public class SeekToFrameExtractor {
     }
 
     class SeekToThread extends Thread {
+        private static final String TAG = "SeekToThread";
         final static int SEEK_MESSAGE = 1;
 
         private MediaExtractor extractor;
@@ -107,8 +115,15 @@ public class SeekToFrameExtractor {
 
                 if (mime.startsWith("video/")) {
                     extractor.selectTrack(i);
-                    decoder = MediaCodec.createDecoderByType(mime);
-                    decoder.configure(format, surface, null, 0);
+
+                    // newer Android devices have had issues with the codec selection process
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                        decoder = configDecoder(format, surface);
+                    } else {
+                        decoder = MediaCodec.createDecoderByType(mime);
+                        decoder.configure(format, surface, null, 0);
+                    }
+
                     break;
                 }
             }
@@ -118,6 +133,91 @@ public class SeekToFrameExtractor {
             decoder.start();
 
             bufferInfo = new MediaCodec.BufferInfo();
+        }
+
+        /**
+         * Configures the decoder with one of the device's codecs.
+         * <p>
+         *     This method addresses a bug causing the application to crash when using
+         *     specific codecs. Specifically, the Samsung Galaxy Tab A(6) was crashing
+         *     when the OMX.Exynos.avc.dec codec was used by multiple views at once.
+         * </p>
+         * <p>
+         *     To address the bug, this method searches through all codecs and queries
+         *     them for capabilities matching the video format (instead of just using
+         *     the system returned codec provided by
+         *     {@link MediaCodec#createDecoderByType(String)} or
+         *     {@link MediaCodecList#findDecoderForFormat(MediaFormat)}).
+         * </p>
+         * <p>
+         *     To achieve the desired results, this method will attempt to configure
+         *     each matching decoder, discarding those that throw errors. Since most
+         *     devices will have more than one codec for common formats, this can be
+         *     trusted to work the majority of the time.
+         * </p>
+         * @param format video format the codec must support
+         * @param surface the surface to attach to the codec
+         * @return the configured decoder, or null if an error occurred
+         */
+        @Contract("null, _ -> null; !null, null -> null")
+        @RequiresApi(api = VERSION_CODES.LOLLIPOP)
+        @Nullable
+        private MediaCodec configDecoder(@Nullable MediaFormat format, @Nullable Surface surface) {
+
+            if (format == null || surface == null) {
+                return null;
+            }
+
+            MediaCodec codec;
+            String mime = format.getString(MediaFormat.KEY_MIME);
+            MediaCodecList list = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
+            MediaCodecInfo[] infos = list.getCodecInfos();
+
+            for (MediaCodecInfo info : infos) {
+
+                CodecCapabilities capabilities;
+                boolean formatSupported;
+
+                // does codec support this mime type
+                try {
+                    capabilities = info.getCapabilitiesForType(mime);
+                } catch (IllegalArgumentException ignored) {
+                    continue;
+                }
+
+                // does codec support his video format
+                try {
+                    formatSupported = capabilities.isFormatSupported(format);
+                } catch (IllegalArgumentException ignored) {
+                    continue;
+                }
+
+                // can we configure it successfully
+                if (formatSupported) {
+                    Log.i(TAG, "trying decoder: " + info.getName());
+                    try {
+                        codec = MediaCodec.createByCodecName(info.getName());
+                    } catch (IOException e) {
+                        continue;
+                    }
+                    try {
+                        codec.configure(format, surface, null, 0);
+                    } catch (IllegalArgumentException ignored) {
+                        Log.w(TAG, "decoder failed: " + info.getName());
+                        codec.release();
+                        continue;
+                    } catch (IllegalStateException ignored) {
+                        Log.w(TAG, "decoder failed: " + info.getName());
+                        codec.release();
+                        continue;
+                    }
+                    Log.d(TAG, "decoder success: " + info.getName());
+                    return codec;
+                }
+            } // end of for loop
+
+            Log.e(TAG, "no decoder successfully configured.");
+            return null;
         }
 
         // thread safe

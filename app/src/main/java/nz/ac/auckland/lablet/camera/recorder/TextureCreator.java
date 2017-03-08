@@ -7,12 +7,15 @@
  */
 package nz.ac.auckland.lablet.camera.recorder;
 
+import static nz.ac.auckland.lablet.utility.OpenGLHelper.checkGlError;
+
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
-import android.util.Log;
 
 
 class TextureCreator {
+    private static final String TAG = "TextureCreator";
+
     public static int create() {
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
@@ -34,11 +37,4 @@ class TextureCreator {
         return textureID;
     }
 
-    public static void checkGlError(String op) {
-        int error;
-        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
-            Log.e("Texture", op + ": glError " + error);
-            throw new RuntimeException(op + ": glError " + error);
-        }
-    }
 }

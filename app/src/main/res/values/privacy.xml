@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="privacy_title">Lablet Privacy Policy</string>
+    <string name="privacy_message">This application collects and saves a variety of data including
+        video, audio and text. These data are saved in such a way that they are accessible to anyone
+        with access to the device.\n\nPlease do not store personal or sensitive data on this device
+        and be aware of what is being recorded during use.</string>
+    <string name="privacy_accept">I accept</string>
+    <string name="privacy_reject">Leave Lablet</string>
+</resources>

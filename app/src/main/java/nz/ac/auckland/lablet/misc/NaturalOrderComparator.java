@@ -20,16 +20,51 @@
  2. Altered source versions must be plainly marked as such, and must not be
  misrepresented as being the original software.
  3. This notice may not be removed or altered from any source distribution.
+
+ Updated in Feb 2017 by Paul Freeman to be a String Comparator only and to remove compiler
+ warning messages.
  */
 package nz.ac.auckland.lablet.misc;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 
-public class NaturalOrderComparator implements Comparator
+public class NaturalOrderComparator implements Comparator<String>
 {
-    int compareRight(String a, String b)
+
+    private static char charAt(String s, int i)
     {
+        if (i >= s.length()) {
+            return 0;
+        } else {
+            return s.charAt(i);
+        }
+    }
+
+    public static void main(String[] args) {
+        String[] strings = new String[]{"1-2", "1-02", "1-20", "10-20", "fred", "jane", "pic01",
+            "pic2", "pic02", "pic02a", "pic3", "pic4", "pic 4 else", "pic 5", "pic05", "pic 5",
+            "pic 5 something", "pic 6", "pic   7", "pic100", "pic100a", "pic120", "pic121",
+            "pic02000", "tom", "x2-g8", "x2-y7", "x2-y08", "x8-y8"};
+
+        List orig = Arrays.asList(strings);
+
+        System.out.println("Original: " + orig);
+
+        List scrambled = Arrays.asList(strings);
+        Collections.shuffle(scrambled);
+
+        System.out.println("Scrambled: " + scrambled);
+
+        Collections.sort(scrambled, new NaturalOrderComparator());
+
+        System.out.println("Sorted: " + scrambled);
+    }
+
+    private int compareRight(String a, String b) {
         int bias = 0;
         int ia = 0;
         int ib = 0;
@@ -74,13 +109,10 @@ public class NaturalOrderComparator implements Comparator
         }
     }
 
-    public int compare(Object o1, Object o2)
+    public int compare(String a, String b)
     {
-        String a = o1.toString();
-        String b = o2.toString();
-
         int ia = 0, ib = 0;
-        int nza = 0, nzb = 0;
+        int nza, nzb;
         char ca, cb;
         int result;
 
@@ -151,38 +183,5 @@ public class NaturalOrderComparator implements Comparator
             ++ia;
             ++ib;
         }
-    }
-
-    static char charAt(String s, int i)
-    {
-        if (i >= s.length())
-        {
-            return 0;
-        }
-        else
-        {
-            return s.charAt(i);
-        }
-    }
-
-    public static void main(String[] args)
-    {
-        String[] strings = new String[] { "1-2", "1-02", "1-20", "10-20", "fred", "jane", "pic01",
-                "pic2", "pic02", "pic02a", "pic3", "pic4", "pic 4 else", "pic 5", "pic05", "pic 5",
-                "pic 5 something", "pic 6", "pic   7", "pic100", "pic100a", "pic120", "pic121",
-                "pic02000", "tom", "x2-g8", "x2-y7", "x2-y08", "x8-y8" };
-
-        List orig = Arrays.asList(strings);
-
-        System.out.println("Original: " + orig);
-
-        List scrambled = Arrays.asList(strings);
-        Collections.shuffle(scrambled);
-
-        System.out.println("Scrambled: " + scrambled);
-
-        Collections.sort(scrambled, new NaturalOrderComparator());
-
-        System.out.println("Sorted: " + scrambled);
     }
 }

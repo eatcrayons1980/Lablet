@@ -12,24 +12,30 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.*;
-import nz.ac.auckland.lablet.*;
-import nz.ac.auckland.lablet.camera.VideoData;
+import android.widget.Button;
+import android.widget.CheckedTextView;
+import android.widget.MediaController;
+import android.widget.TextView;
+import android.widget.VideoView;
+import java.io.File;
+import nz.ac.auckland.lablet.R;
 import nz.ac.auckland.lablet.camera.CameraSensorPlugin;
+import nz.ac.auckland.lablet.camera.VideoData;
 import nz.ac.auckland.lablet.experiment.ExperimentData;
 import nz.ac.auckland.lablet.experiment.ExperimentHelper;
 import nz.ac.auckland.lablet.experiment.ISensorData;
 import nz.ac.auckland.lablet.script.Script;
-
-import java.io.File;
 
 
 /**
  * Script component that has view for starting  a camera experiment.
  */
 public class CameraExperiment extends SingleExperimentBase {
+
+    public static final String TAG = "CameraExperiment";
     private int requestedVideoWidth = -1;
     private int requestedVideoHeight = -1;
     private float recordingFrameRate = -1;
@@ -41,6 +47,7 @@ public class CameraExperiment extends SingleExperimentBase {
 
     @Override
     public View createView(Context context, android.support.v4.app.Fragment parent) {
+        Log.d(TAG, "Creating camera recording view");
         return new ScriptComponentCameraExperimentView(context, (ScriptComponentSheetFragment)parent, this);
     }
 
@@ -56,12 +63,12 @@ public class CameraExperiment extends SingleExperimentBase {
         requestedVideoHeight = height;
     }
 
-    public void setRecordingFrameRate(float frameRate) {
-        recordingFrameRate = frameRate;
-    }
-
     public float getRecordingFrameRate() {
         return recordingFrameRate;
+    }
+
+    public void setRecordingFrameRate(float frameRate) {
+        recordingFrameRate = frameRate;
     }
 }
 

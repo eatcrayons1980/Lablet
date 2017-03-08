@@ -3,10 +3,6 @@ package nz.ac.auckland.lablet.utility;
 import android.os.Environment;
 import android.support.annotation.Nullable;
 import android.util.Log;
-
-import org.jetbrains.annotations.Contract;
-import org.opencv.core.Point;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -14,8 +10,9 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
 import java.util.Locale;
-
 import nz.ac.auckland.lablet.script.Script;
+import org.jetbrains.annotations.Contract;
+import org.opencv.core.Point;
 
 /**
  * A collection of utility methods for file access in Lablet.
@@ -189,5 +186,16 @@ public final class FileHelper {
         }
         Log.i(TAG, "CSV file written successfully");
         return true;
+    }
+
+    /**
+     * Accepts {@link String} objects ending in '.lua'
+     *
+     * @param name file name to test
+     * @return true if {@link String} ends in '.lua'
+     */
+    @Contract("null -> false")
+    public static boolean isLuaFile(@Nullable String name) {
+        return name != null && name.length() >= 5 && name.lastIndexOf(".lua") == name.length() - 4;
     }
 }

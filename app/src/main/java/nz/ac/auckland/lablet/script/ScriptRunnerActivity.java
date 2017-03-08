@@ -10,15 +10,14 @@ package nz.ac.auckland.lablet.script;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.ViewGroup;
-
-import org.jetbrains.annotations.Contract;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -31,35 +30,38 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
 import nz.ac.auckland.lablet.R;
 import nz.ac.auckland.lablet.misc.PersistentBundle;
 import nz.ac.auckland.lablet.misc.StorageLib;
 import nz.ac.auckland.lablet.script.components.ScriptComponentFragmentFactory;
 import nz.ac.auckland.lablet.script.components.ScriptComponentGenericFragment;
 import nz.ac.auckland.lablet.utility.FileHelper;
+import org.jetbrains.annotations.Contract;
 
 
 /**
  * Activity that host one running script.
  */
 public class ScriptRunnerActivity extends FragmentActivity implements IScriptListener {
-    @SuppressWarnings("FieldCanBeLocal")
-    private final String TAG = "ScriptRunnerActivity";
 
+    private static final String TAG = "ScriptRunnerActivity";
+    private static final String SCRIPT_USER_DATA_FILENAME = "script_user_data.xml";
+    private static final String SCRIPT_USER_DATA_DIR = "script_user_data_dir";
+    private static final String SCRIPT_STUDENT_ANSWERS_FILENAME = "user_answers.txt";
+
+    @Nullable
     public Script script = null;
+    @Nullable
     private ViewPager pager = null;
+    @Nullable
     private ScriptFragmentPagerAdapter pagerAdapter = null;
     private List<ScriptTreeNode> activeChain = new ArrayList<>();
-
+    @Nullable
     private File scriptFile = null;
     private String lastErrorMessage = "";
 
-    private final String SCRIPT_USER_DATA_FILENAME = "script_user_data.xml";
-    private final String SCRIPT_USER_DATA_DIR = "script_user_data_dir";
-
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         int lastSelectedFragment;
@@ -68,7 +70,8 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         if (savedInstanceState != null) {
             final String userDataDir = savedInstanceState.getString(SCRIPT_USER_DATA_DIR);
             if (userDataDir == null) {
-                showErrorAndFinish("Can't start script from saved instance state (user data directory is null)");
+                showErrorAndFinish(
+                    "Can't start script from saved instance state (user data directory is null)");
                 return;
             }
             File scriptUserDataDir = new File(userDataDir);
@@ -88,26 +91,37 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         // gui
         setContentView(R.layout.experiment_analyser);
         // Instantiate a ViewPager and a PagerAdapter.
-        pager = (ViewPager)findViewById(R.id.pager);
+        pager = (ViewPager) findViewById(R.id.pager);
         pagerAdapter = new ScriptFragmentPagerAdapter(getSupportFragmentManager(), activeChain);
-        pager.setAdapter(pagerAdapter);
+        if (pager != null) {
+            pager.setAdapter(pagerAdapter);
+        }
 
         pagerAdapter.setComponents(activeChain);
         pager.setCurrentItem(lastSelectedFragment);
 
-        script.start();
+        if (script == null) {
+            Log.e(TAG, "Cannot start script. Script object is null");
+        } else {
+            script.start();
+        }
     }
 
     @Override
-    protected void onSaveInstanceState (Bundle outState) {
+    protected void onSaveInstanceState(@Nullable Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        outState.putString(SCRIPT_USER_DATA_DIR, script.getUserDataDirectory().getPath());
+        if (outState != null) {
+            outState.putString(SCRIPT_USER_DATA_DIR,
+                script == null ? "" : script.getUserDataDirectory().getPath());
+        }
     }
 
+    @Nullable
     public ScriptTreeNode getScriptComponentTreeAt(int index) {
-        if (index < 0 || index >= activeChain.size())
+        if (index < 0 || index >= activeChain.size()) {
             return null;
+        }
         return activeChain.get(index);
     }
 
@@ -115,8 +129,9 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         return activeChain.indexOf(component);
     }
 
+    @Nullable
     public File getScriptUserDataDir() {
-        return script.getUserDataDirectory();
+        return script != null ? script.getUserDataDirectory() : null;
     }
 
     private int createFormIntent() {
@@ -139,14 +154,19 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         if (scriptPath != null) {
             // start new script
             scriptFile = new File(scriptPath);
-            if (loadScriptFailure(scriptFile, scriptUserDataDir)) {
-                StorageLib.recursiveDeleteFile(scriptUserDataDir);
-                return -1;
+            if (loadScript(scriptFile, scriptUserDataDir)) {
+                if (script == null) {
+                    Log.e(TAG, "Script object is null");
+                } else {
+                    activeChain = script.getActiveChain();
+                }
+                return 0;
             }
-            activeChain = script.getActiveChain();
-            return 0;
-        } else
+            StorageLib.recursiveDeleteFile(scriptUserDataDir);
+            return -1;
+        } else {
             return loadScriptStateFromFile(scriptUserDataDir);
+        }
     }
 
     @Override
@@ -156,18 +176,18 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         saveScriptStateToFile();
     }
 
-    private boolean loadScriptFailure(File scriptFile, File scriptUserDataDir) {
+    private boolean loadScript(File scriptFile, File scriptUserDataDir) {
         ScriptComponentFragmentFactory factory = new ScriptComponentFragmentFactory();
         LuaScriptLoader loader = new LuaScriptLoader(factory);
         script = loader.load(scriptFile);
         if (script == null) {
             lastErrorMessage = loader.getLastError();
-            return true;
+            return false;
         }
 
         script.setUserDataDirectory(scriptUserDataDir);
         script.setListener(this);
-        return false;
+        return true;
     }
 
     /**
@@ -205,8 +225,14 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         }
 
         scriptFile = new File(scriptUserDataDir, scriptName);
-        if (loadScriptFailure(scriptFile, scriptUserDataDir))
+        if (!loadScript(scriptFile, scriptUserDataDir)) {
             return -1;
+        }
+
+        if (script == null) {
+            Log.e(TAG, "Script object is null");
+            return -1;
+        }
 
         if (!script.loadScriptState(bundle)) {
             lastErrorMessage = script.getLastError();
@@ -221,20 +247,24 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
 
     /**
      * Saves the state of the current script to the current script data dir.
+     *
      * @return false if an error occurred.
      */
     public boolean saveScriptStateToFile() {
-        if (script == null)
+        if (script == null) {
             return false;
+        }
         File scriptUserDataDir = script.getUserDataDirectory();
-        if (scriptFile == null || scriptUserDataDir == null)
+        if (scriptFile == null || scriptUserDataDir == null) {
             return false;
+        }
 
         Bundle bundle = new Bundle();
         bundle.putString("script_name", scriptFile.getName());
         bundle.putInt("current_fragment", getCurrentPagerItem());
-        if (!script.saveScriptState(bundle))
+        if (!script.saveScriptState(bundle)) {
             return false;
+        }
 
         // save script file
         File scriptFileTarget = new File(scriptUserDataDir, scriptFile.getName());
@@ -266,7 +296,7 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
      * @return integer value associated with current sheet
      */
     public int getCurrentPagerItem() {
-        return pager.getCurrentItem();
+        return pager != null ? pager.getCurrentItem() : -1;
     }
 
 /*    *//**
@@ -296,24 +326,25 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
     /**
      * Extracts the user answers from a bundle and saves them to a file.
      *
-     * This function is simply implemented to provide users with a more readable
-     * version of their answers than what is provided in the XML data saved as
-     * the persistentBundle for the application.
+     * This function is simply implemented to provide users with a more readable version of their
+     * answers than what is provided in the XML data saved as the persistentBundle for the
+     * application.
      *
-     * This file is saved into the internal directory containing Lablet data for
-     * the experiment. It may or may not be accessible to the user.
+     * This file is saved into the internal directory containing Lablet data for the experiment. It
+     * may or may not be accessible to the user.
      *
      * @param bundle the top-level (script-level) bundle of data
      * @return true if everything is written successfully; false otherwise
      */
     @Contract("null -> false")
-    private boolean saveUserAnswersToExperimentFile(Bundle bundle) {
-        if (bundle == null)
+    private boolean saveUserAnswersToExperimentFile(@Nullable Bundle bundle) {
+        if (bundle == null) {
             return false;
+        }
 
         // get fileWriter object
-        String SCRIPT_STUDENT_ANSWERS_FILENAME = "user_answers.txt";
-        FileWriter fileWriter = FileHelper.experimentFileWriter(script, SCRIPT_STUDENT_ANSWERS_FILENAME);
+        FileWriter fileWriter = FileHelper
+            .experimentFileWriter(script, SCRIPT_STUDENT_ANSWERS_FILENAME);
         return fileWriter != null && saveUserAnswersToFile(bundle, fileWriter);
     }
 
@@ -325,9 +356,11 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
      * @return true if everything is written successfully; false otherwise
      */
     @Contract("null, null -> false")
-    private boolean saveUserAnswersToFile(Bundle bundle, FileWriter fileWriter) {
-        if (bundle == null || fileWriter == null)
+    private boolean saveUserAnswersToFile(@Nullable Bundle bundle,
+        @Nullable FileWriter fileWriter) {
+        if (bundle == null || fileWriter == null) {
             return false;
+        }
 
         try {
             // write timestamp and script name to file
@@ -351,7 +384,7 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
 
                     // if child has a "question" and "answer" field
                     if ((question = child.getString("question")) != null
-                            && (answer = child.getString("answer")) != null) {
+                        && (answer = child.getString("answer")) != null) {
 
                         // print sheet title if not printed yet
                         if (!sheet_label_printed) {
@@ -368,16 +401,16 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
                 }
             }
         } catch (IOException e) {
-                // ERROR
-                Log.e(TAG, "Error: ", e);
-                Log.e(TAG, "Could not write user answers to file: " + fileWriter.toString());
-                try {
-                    fileWriter.close();
-                } catch (IOException e1) {
-                    Log.w(TAG, "Error: ", e1);
-                    Log.w(TAG, "Could not close user answer file: " + fileWriter.toString());
-                }
-                return false;
+            // ERROR
+            Log.e(TAG, "Error: ", e);
+            Log.e(TAG, "Could not write user answers to file: " + fileWriter.toString());
+            try {
+                fileWriter.close();
+            } catch (IOException e1) {
+                Log.w(TAG, "Error: ", e1);
+                Log.w(TAG, "Could not close user answer file: " + fileWriter.toString());
+            }
+            return false;
         }
         try {
             // flush and close file with user answers
@@ -392,16 +425,16 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         return true;
     }
 
-    @SuppressWarnings("SameParameterValue")
     private void showErrorAndFinish(String error) {
         showErrorAndFinish(error, null);
     }
 
-    private void showErrorAndFinish(String error, String message) {
+    private void showErrorAndFinish(String error, @Nullable String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(error);
-        if (message != null)
+        if (message != null) {
             builder.setMessage(message);
+        }
         builder.setNeutralButton("Ok", null);
         AlertDialog dialog = builder.create();
         dialog.setOnDismissListener(dialogInterface -> finish());
@@ -410,35 +443,45 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
 
     @Override
     public void onComponentStateChanged(ScriptTreeNode current, int state) {
-        if (pagerAdapter == null)
+        if (pagerAdapter == null) {
             return;
+        }
 
         ScriptTreeNode lastSelectedComponent = null;
-        if (activeChain.size() > 0)
+        if (activeChain.size() > 0) {
             lastSelectedComponent = activeChain.get(getCurrentPagerItem());
-        activeChain = script.getActiveChain();
+        }
+        if (script == null) {
+            Log.e(TAG, "Script object is null");
+        } else {
+            activeChain = script.getActiveChain();
+        }
         pagerAdapter.setComponents(activeChain);
 
         int index = activeChain.indexOf(lastSelectedComponent);
-        if (index < 0)
+        if (index < 0) {
             index = activeChain.size() - 1;
-        if (index >= 0)
+        }
+        if (index >= 0 && pager != null) {
             pager.setCurrentItem(index);
+        }
     }
 
     public void setNextComponent(ScriptTreeNode next) {
         int index = activeChain.indexOf(next);
-        if (index >0)
+        if (index > 0 && pager != null) {
             pager.setCurrentItem(index);
+        }
     }
 
     private class ScriptFragmentPagerAdapter extends FragmentStatePagerAdapter {
+
+        @NonNull
+        private final Map<ScriptTreeNode, ScriptComponentGenericFragment> fragmentMap = new HashMap<>();
         private List<ScriptTreeNode> components;
-        @SuppressWarnings("CanBeFinal")
-        private Map<ScriptTreeNode, ScriptComponentGenericFragment> fragmentMap = new HashMap<>();
 
         ScriptFragmentPagerAdapter(android.support.v4.app.FragmentManager fragmentManager,
-                                          List<ScriptTreeNode> components) {
+            List<ScriptTreeNode> components) {
             super(fragmentManager);
             this.components = components;
         }
@@ -451,7 +494,7 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         @Override
         public android.support.v4.app.Fragment getItem(int position) {
             ScriptTreeNodeFragmentHolder fragmentCreator
-                    = (ScriptTreeNodeFragmentHolder)components.get(position);
+                = (ScriptTreeNodeFragmentHolder) components.get(position);
             ScriptComponentGenericFragment fragment = fragmentCreator.createFragment();
             fragmentMap.put(components.get(position), fragment);
             return fragment;
@@ -463,15 +506,17 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         }
 
         @Override
-        public void destroyItem(ViewGroup container, int position, Object object) {
+        public void destroyItem(ViewGroup container, int position, @NonNull Object object) {
             super.destroyItem(container, position, object);
-            fragmentMap.remove(findComponentFor((Fragment)object));
+            fragmentMap.remove(findComponentFor((Fragment) object));
         }
 
         private ScriptTreeNode findComponentFor(Fragment fragment) {
-            for (Map.Entry<ScriptTreeNode, ScriptComponentGenericFragment> entry : fragmentMap.entrySet()) {
-                if (entry.getValue() == fragment)
+            for (Map.Entry<ScriptTreeNode, ScriptComponentGenericFragment> entry : fragmentMap
+                .entrySet()) {
+                if (entry.getValue() == fragment) {
                     return entry.getKey();
+                }
             }
             return null;
         }

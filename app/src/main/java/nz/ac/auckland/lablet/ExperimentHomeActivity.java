@@ -11,15 +11,26 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.FileObserver;
-import android.view.*;
-import android.widget.*;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.ListView;
+import android.widget.PopupMenu;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import nz.ac.auckland.lablet.experiment.ExperimentHelper;
 import nz.ac.auckland.lablet.experiment.ExperimentPluginFactory;
 import nz.ac.auckland.lablet.experiment.IImportPlugin;
@@ -27,13 +38,11 @@ import nz.ac.auckland.lablet.experiment.ISensorPlugin;
 import nz.ac.auckland.lablet.misc.NaturalOrderComparator;
 import nz.ac.auckland.lablet.misc.StorageLib;
 import nz.ac.auckland.lablet.misc.aFileDialog.FileChooserDialog;
-import nz.ac.auckland.lablet.views.*;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import nz.ac.auckland.lablet.views.CheckBoxAdapter;
+import nz.ac.auckland.lablet.views.CheckBoxListEntry;
+import nz.ac.auckland.lablet.views.ExportDirDialog;
+import nz.ac.auckland.lablet.views.InfoBarBackgroundDrawable;
+import nz.ac.auckland.lablet.views.InfoSideBar;
 
 
 /**
@@ -46,29 +55,20 @@ class InfoHelper {
         return authors;
     }
 
-    static public AlertDialog createAlertInfoBox(final Activity activity) {
+    static AlertDialog createAlertInfoBox(final Activity activity) {
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setTitle("Lablet " + getVersionString(activity));
-        builder.setNeutralButton("Leave me Alone", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
+        builder.setNeutralButton("Leave me Alone", (dialogInterface, i) -> {
 
-            }
         });
-        builder.setNegativeButton("No Thanks", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Toast toast = Toast.makeText(activity.getApplicationContext(), "$%#@*!?", Toast.LENGTH_SHORT);
-                toast.show();
-            }
+        builder.setNegativeButton("No Thanks", (dialogInterface, i) -> {
+            Toast toast = Toast.makeText(activity.getApplicationContext(), "$%#@*!?", Toast.LENGTH_SHORT);
+            toast.show();
         });
-        builder.setPositiveButton("Like it! (App Store)", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse("market://details?id=nz.ac.auckland.lablet"));
-                activity.startActivity(intent);
-            }
+        builder.setPositiveButton("Like it! (App Store)", (dialogInterface, i) -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse("market://details?id=nz.ac.auckland.lablet"));
+            activity.startActivity(intent);
         });
         AlertDialog infoAlertBox = builder.create();
         final ScrollView scrollView = new ScrollView(activity.getApplicationContext());
@@ -81,7 +81,7 @@ class InfoHelper {
         return infoAlertBox;
     }
 
-    static public String getVersionString(Activity activity) {
+    static String getVersionString(Activity activity) {
         String versionString = "Ver. ";
         try {
             versionString += activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionName;
@@ -101,6 +101,8 @@ class InfoHelper {
  * </p>
  */
 public class ExperimentHomeActivity extends Activity {
+    static final int PERFORM_EXPERIMENT = 0;
+    static final int ANALYSE_EXPERIMENT = 1;
     private List<ISensorPlugin> sensorPlugins = null;
     private ArrayList<CheckBoxListEntry> experimentList = null;
     private CheckBoxListEntry.OnCheckBoxListEntryListener checkBoxListEntryListener;
@@ -111,9 +113,6 @@ public class ExperimentHomeActivity extends Activity {
     private AlertDialog infoAlertBox = null;
     private AlertDialog deleteExperimentAlertBox = null;
     private ExperimentDirObserver experimentDirObserver = null;
-
-    static final int PERFORM_EXPERIMENT = 0;
-    static final int ANALYSE_EXPERIMENT = 1;
 
     public ExperimentHomeActivity() {
 
@@ -126,82 +125,62 @@ public class ExperimentHomeActivity extends Activity {
 
         // script item
         MenuItem scriptItem = menu.findItem(R.id.action_scripts);
-        assert(scriptItem != null);
-        scriptItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                startScriptActivity();
-                return true;
-            }
+        if (BuildConfig.DEBUG && scriptItem == null)
+            throw new RuntimeException();
+        scriptItem.setOnMenuItemClickListener(menuItem -> {
+            startScriptActivity();
+            return true;
         });
 
         // info item
         MenuItem infoItem = menu.findItem(R.id.action_info);
-        assert(infoItem != null);
+        if (BuildConfig.DEBUG && infoItem == null)
+            throw new RuntimeException();
         String versionString = InfoHelper.getVersionString(this);
         infoItem.setTitle(versionString);
         infoAlertBox = InfoHelper.createAlertInfoBox(this);
-        infoItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                infoAlertBox.show();
-                return true;
-            }
+        infoItem.setOnMenuItemClickListener(menuItem -> {
+            infoAlertBox.show();
+            return true;
         });
 
         // import item
         MenuItem importItem = menu.findItem(R.id.action_import);
-        assert(importItem != null);
-        importItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                showImportMenu();
-                return true;
-            }
+        if (BuildConfig.DEBUG && importItem == null)
+            throw new RuntimeException();
+        importItem.setOnMenuItemClickListener(menuItem -> {
+            showImportMenu();
+            return true;
         });
 
         // delete item
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
+        builder.setNegativeButton("No", (dialogInterface, i) -> {
 
-            }
         });
         builder.setTitle("Really delete the selected experiments?");
-        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                deleteSelectedExperiments();
-            }
-        });
+        builder.setPositiveButton("Yes", (dialogInterface, i) -> deleteSelectedExperiments());
 
         deleteExperimentAlertBox = builder.create();
 
         deleteItem = menu.findItem(R.id.action_delete);
         assert deleteItem != null;
         deleteItem.setVisible(false);
-        deleteItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                if (!isAtLeastOneExperimentSelected())
-                    return false;
-                deleteExperimentAlertBox.show();
-                return true;
-            }
+        deleteItem.setOnMenuItemClickListener(menuItem -> {
+            if (!isAtLeastOneExperimentSelected())
+                return false;
+            deleteExperimentAlertBox.show();
+            return true;
         });
 
         exportItem = menu.findItem(R.id.action_mail);
         assert exportItem != null;
         exportItem.setVisible(false);
-        exportItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                if (!isAtLeastOneExperimentSelected())
-                    return false;
-                exportSelection();
-                return true;
-            }
+        exportItem.setOnMenuItemClickListener(menuItem -> {
+            if (!isAtLeastOneExperimentSelected())
+                return false;
+            exportSelection();
+            return true;
         });
 
         return true;
@@ -216,13 +195,10 @@ public class ExperimentHomeActivity extends Activity {
             popup.getMenu().add(0, i, Menu.NONE, plugin.getName());
         }
 
-        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem menuItem) {
-                int item = menuItem.getItemId();
-                importData(importPlugins.get(item));
-                return false;
-            }
+        popup.setOnMenuItemClickListener(menuItem -> {
+            int item = menuItem.getItemId();
+            importData(importPlugins.get(item));
+            return false;
         });
         popup.show();
     }
@@ -244,13 +220,10 @@ public class ExperimentHomeActivity extends Activity {
             public void onFileSelected(final Dialog source, File file) {
                 Context context = source.getContext();
                 plugin.importData(file, ExperimentAnalysisBaseActivity.getDefaultExperimentBaseDir(context),
-                        new IImportPlugin.IListener() {
-                    @Override
-                    public void onImportFinished(boolean successful) {
-                        source.dismiss();
-                        updateExperimentList();
-                    }
-                });
+                        successful -> {
+                            source.dismiss();
+                            updateExperimentList();
+                        });
             }
 
             @Override
@@ -330,13 +303,10 @@ public class ExperimentHomeActivity extends Activity {
         newExperimentList.setAdapter(new ArrayAdapter<>(this,
                 android.R.layout.simple_list_item_1, sensorPluginStrings));
 
-        newExperimentList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                List<ISensorPlugin> pluginList = new ArrayList<>();
-                pluginList.add(sensorPlugins.get(i));
-                startExperiment(pluginList);
-            }
+        newExperimentList.setOnItemClickListener((adapterView, view, i, l) -> {
+            List<ISensorPlugin> pluginList = new ArrayList<>();
+            pluginList.add(sensorPlugins.get(i));
+            startExperiment(pluginList);
         });
 
         // experiment list
@@ -346,30 +316,19 @@ public class ExperimentHomeActivity extends Activity {
         experimentListAdaptor = new CheckBoxAdapter(this, R.layout.check_box_list_item, experimentList);
         experimentListView.setAdapter(experimentListAdaptor);
 
-        experimentListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                String id = experimentList.get(i).getName();
-                startAnalyzeActivityById(id);
-            }
+        experimentListView.setOnItemClickListener((adapterView, view, i, l) -> {
+            String id = experimentList.get(i).getName();
+            startAnalyzeActivityById(id);
         });
 
         selectAllCheckBox = (CheckBox)findViewById(R.id.checkBoxSelectAll);
-        selectAllCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-                for (CheckBoxListEntry entry : experimentList)
-                    entry.setSelected(b);
-                experimentListAdaptor.notifyDataSetChanged();
-            }
+        selectAllCheckBox.setOnCheckedChangeListener((compoundButton, b) -> {
+            for (CheckBoxListEntry entry : experimentList)
+                entry.setSelected(b);
+            experimentListAdaptor.notifyDataSetChanged();
         });
 
-        checkBoxListEntryListener = new CheckBoxListEntry.OnCheckBoxListEntryListener() {
-            @Override
-            public void onSelected(CheckBoxListEntry entry) {
-                updateSelectedMenuItem();
-            }
-        };
+        checkBoxListEntryListener = entry -> updateSelectedMenuItem();
 
         File experimentDir = ExperimentAnalysisBaseActivity.getDefaultExperimentBaseDir(this);
         if (experimentDir.exists()) {
@@ -398,6 +357,7 @@ public class ExperimentHomeActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+        ((Lablet) getApplication()).ensurePrivacyPolicy(this);
 
         selectAllCheckBox.setChecked(false);
         invalidateOptionsMenu();
@@ -427,12 +387,11 @@ public class ExperimentHomeActivity extends Activity {
                 String experimentPath = data.getStringExtra(ExperimentActivity.PATH);
                 startAnalyzeActivity(experimentPath);
             }
-            return;
         }
 
-        if (requestCode == ANALYSE_EXPERIMENT) {
+        //if (requestCode == ANALYSE_EXPERIMENT) {
 
-        }
+        //}
     }
 
     private void startExperiment(List<ISensorPlugin> plugins) {
@@ -452,17 +411,22 @@ public class ExperimentHomeActivity extends Activity {
         experimentList.clear();
         File experimentDir = ExperimentAnalysisBaseActivity.getDefaultExperimentBaseDir(this);
         if (experimentDir.isDirectory()) {
-            List<File> children = Arrays.asList(experimentDir.listFiles());
+            List<String> children = new ArrayList<>();
+            for (File file : experimentDir.listFiles()) {
+                children.add(file.getName());
+            }
             Collections.sort(children, Collections.reverseOrder(new NaturalOrderComparator()));
-            for (File child : children)
-                experimentList.add(new CheckBoxListEntry(child.getName(), checkBoxListEntryListener));
+            //noinspection Convert2streamapi
+            for (String child : children) {
+                experimentList.add(new CheckBoxListEntry(child, checkBoxListEntryListener));
+            }
         }
 
         experimentListAdaptor.notifyDataSetChanged();
     }
 
     private class ExperimentDirObserver extends FileObserver {
-        public ExperimentDirObserver(String path) {
+        ExperimentDirObserver(String path) {
             super(path);
         }
 
