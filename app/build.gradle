@@ -3,7 +3,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.2.3'
+        classpath 'com.android.tools.build:gradle:2.3.0'
     }
 }
 
@@ -17,8 +17,8 @@ android {
         applicationId "nz.ac.auckland.lablet"
         minSdkVersion 18
         targetSdkVersion 19
-        versionCode 315
-        versionName "3.1.4"
+        versionCode 317
+        versionName "3.1.6"
         renderscriptTargetApi 18
         renderscriptSupportModeEnabled true
         jackOptions {
