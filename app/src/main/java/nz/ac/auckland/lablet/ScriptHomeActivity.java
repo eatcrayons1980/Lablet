@@ -45,7 +45,6 @@ import nz.ac.auckland.lablet.views.CheckBoxListEntry;
 import nz.ac.auckland.lablet.views.ExportDirDialog;
 import nz.ac.auckland.lablet.views.InfoBarBackgroundDrawable;
 import nz.ac.auckland.lablet.views.InfoSideBar;
-import org.jetbrains.annotations.Contract;
 
 
 /**
@@ -58,41 +57,20 @@ class ScriptDirs {
     @NonNull
     final static private String PREFERENCES_NAME = "lablet_preferences";
 
-    /**
-     * The script directory is the directory the stores the script files, i.e., the lua files.
-     *
-     * @param context the context
-     * @return the script directory File
-     */
-    @Nullable
-    static private File getScriptDirectory(@Nullable Context context) {
-        if (context == null) {
-            return null;
-        }
-        File baseDir = context.getExternalFilesDir(null);
-        File scriptDir = new File(baseDir, "scripts");
-        if (!scriptDir.exists() && !scriptDir.mkdir()) {
-            return null;
-        }
-        return scriptDir;
-    }
-
-    @Contract("null -> null; !null -> !null")
     @Nullable
     static private File getResourceScriptDir(@Nullable Context context) {
         if (context == null) {
             return null;
         }
-        return new File(getScriptDirectory(context), "demo");
+        return new File(FileHelper.getScriptDirectory(context), "demo");
     }
 
-    @Contract("null -> null; !null -> !null")
     @Nullable
     static File getRemoteScriptDir(@Nullable Context context) {
         if (context == null) {
             return null;
         }
-        return new File(getScriptDirectory(context), "remotes");
+        return new File(FileHelper.getScriptDirectory(context), "remotes");
     }
 
     /**
@@ -159,7 +137,7 @@ class ScriptDirs {
      */
     static void readScriptList(@NonNull List<ScriptMetaData> scriptList, Context context) {
         File[] scriptDirs = {
-            getScriptDirectory(context),
+            FileHelper.getScriptDirectory(context),
             getResourceScriptDir(context),
             getRemoteScriptDir(context)
         };
@@ -219,22 +197,6 @@ public class ScriptHomeActivity extends Activity {
     private AlertDialog infoAlertBox = null;
     @Nullable
     private CheckBox selectAllCheckBox = null;
-
-    /**
-     * The script user data is the directory that contains the stored script state, i.e., the
-     * results.
-     *
-     * @param context the context
-     * @return the script user data
-     */
-    static private File getScriptUserDataDir(@NonNull Context context) {
-        File baseDir = context.getExternalFilesDir(null);
-        File scriptDir = new File(baseDir, "script_user_data");
-        if (!scriptDir.exists() && !scriptDir.mkdir()) {
-            return null;
-        }
-        return scriptDir;
-    }
 
     @Override
     public boolean onCreateOptionsMenu(@NonNull Menu menu) {
@@ -328,7 +290,7 @@ public class ScriptHomeActivity extends Activity {
     private void exportSelection() {
         List<File> exportList = new ArrayList<>();
 
-        File scriptBaseDir = getScriptUserDataDir(this);
+        File scriptBaseDir = FileHelper.getScriptUserDataDir(this);
         if (existingScriptList != null) {
             for (CheckBoxListEntry entry : existingScriptList) {
                 if (!entry.getSelected()) {
@@ -465,7 +427,7 @@ public class ScriptHomeActivity extends Activity {
     }
 
     private void deleteSelectedExistingScript() {
-        File scriptDir = getScriptUserDataDir(this);
+        File scriptDir = FileHelper.getScriptUserDataDir(this);
         if (existingScriptList != null) {
             for (CheckBoxListEntry entry : existingScriptList) {
                 if (!entry.getSelected()) {
@@ -486,7 +448,7 @@ public class ScriptHomeActivity extends Activity {
 
     private void startScript(@NonNull ScriptMetaData metaData) {
         String scriptId = metaData.getScriptFileName();
-        File scriptUserDataDir = new File(getScriptUserDataDir(this),
+        File scriptUserDataDir = new File(FileHelper.getScriptUserDataDir(this),
             Script.generateScriptUid(scriptId));
         Intent intent = new Intent(this, ScriptRunnerActivity.class);
         intent.putExtra("script_path", metaData.file.getPath());
@@ -495,7 +457,7 @@ public class ScriptHomeActivity extends Activity {
     }
 
     private void loadPreviousScript(@NonNull String scriptDir) {
-        File scriptUserDataDir = new File(getScriptUserDataDir(this), scriptDir);
+        File scriptUserDataDir = new File(FileHelper.getScriptUserDataDir(this), scriptDir);
 
         Intent intent = new Intent(this, ScriptRunnerActivity.class);
         intent.putExtra("script_user_data_dir", scriptUserDataDir.getPath());
@@ -520,7 +482,7 @@ public class ScriptHomeActivity extends Activity {
         } else {
             existingScriptList.clear();
         }
-        File scriptDir = getScriptUserDataDir(this);
+        File scriptDir = FileHelper.getScriptUserDataDir(this);
         if (scriptDir != null && scriptDir.isDirectory() && scriptDir.listFiles() != null) {
             List<String> children = new ArrayList<>();
             for (File file : scriptDir.listFiles()) {
