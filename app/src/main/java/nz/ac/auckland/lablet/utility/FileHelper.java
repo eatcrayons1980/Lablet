@@ -1,6 +1,8 @@
 package nz.ac.auckland.lablet.utility;
 
+import android.content.Context;
 import android.os.Environment;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import java.io.File;
@@ -197,5 +199,44 @@ public final class FileHelper {
     @Contract("null -> false")
     public static boolean isLuaFile(@Nullable String name) {
         return name != null && name.length() >= 5 && name.lastIndexOf(".lua") == name.length() - 4;
+    }
+
+    /**
+     * The script user data is the directory that contains the stored script state, i.e., the
+     * results.
+     *
+     * @param context the context
+     * @return the script user data
+     */
+    @Nullable
+    static public File getScriptUserDataDir(@Nullable Context context) {
+        if (context == null) {
+            return null;
+        }
+        File baseDir = context.getExternalFilesDir(null);
+        File scriptDir = new File(baseDir, "script_user_data");
+        if (!scriptDir.exists() && !scriptDir.mkdir()) {
+            return null;
+        }
+        return scriptDir;
+    }
+
+    /**
+     * The script directory is the directory the stores the script files, i.e., the lua files.
+     *
+     * @param context the context
+     * @return the script directory File
+     */
+    @Nullable
+    static public File getScriptDirectory(@Nullable Context context) {
+        if (context == null) {
+            return null;
+        }
+        File baseDir = context.getExternalFilesDir(null);
+        File scriptDir = new File(baseDir, "scripts");
+        if (!scriptDir.exists() && !scriptDir.mkdir()) {
+            return null;
+        }
+        return scriptDir;
     }
 }

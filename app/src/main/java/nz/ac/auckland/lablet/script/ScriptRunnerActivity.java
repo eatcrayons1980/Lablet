@@ -9,7 +9,10 @@ package nz.ac.auckland.lablet.script;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore.MediaColumns;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -21,6 +24,7 @@ import android.view.ViewGroup;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,7 +40,6 @@ import nz.ac.auckland.lablet.misc.StorageLib;
 import nz.ac.auckland.lablet.script.components.ScriptComponentFragmentFactory;
 import nz.ac.auckland.lablet.script.components.ScriptComponentGenericFragment;
 import nz.ac.auckland.lablet.utility.FileHelper;
-import org.jetbrains.annotations.Contract;
 
 
 /**
@@ -81,7 +84,12 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
                 return;
             }
         } else {
-            lastSelectedFragment = createFormIntent();
+            // An ACTION_VIEW intent means a script has been shared with Lablet from another app
+            final String action = getIntent().getAction();
+            if (action != null && action.equals(Intent.ACTION_VIEW)) {
+                setIntent(prepareExternalIntent(getIntent()));
+            }
+            lastSelectedFragment = createFromIntent();
             if (lastSelectedFragment < 0) {
                 showErrorAndFinish("Can't start script", lastErrorMessage);
                 return;
@@ -108,6 +116,13 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+
+        saveScriptStateToFile();
+    }
+
+    @Override
     protected void onSaveInstanceState(@Nullable Bundle outState) {
         super.onSaveInstanceState(outState);
 
@@ -115,134 +130,6 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
             outState.putString(SCRIPT_USER_DATA_DIR,
                 script == null ? "" : script.getUserDataDirectory().getPath());
         }
-    }
-
-    @Nullable
-    public ScriptTreeNode getScriptComponentTreeAt(int index) {
-        if (index < 0 || index >= activeChain.size()) {
-            return null;
-        }
-        return activeChain.get(index);
-    }
-
-    public int getScriptComponentIndex(ScriptTreeNode component) {
-        return activeChain.indexOf(component);
-    }
-
-    @Nullable
-    public File getScriptUserDataDir() {
-        return script != null ? script.getUserDataDirectory() : null;
-    }
-
-    private int createFormIntent() {
-        Intent intent = getIntent();
-        final String scriptPath = intent.getStringExtra("script_path");
-        final String userDataDir = intent.getStringExtra("script_user_data_dir");
-
-        if (userDataDir == null) {
-            lastErrorMessage = "user data directory is missing";
-            return -1;
-        }
-        File scriptUserDataDir = new File(userDataDir);
-        if (!scriptUserDataDir.exists()) {
-            if (!scriptUserDataDir.mkdir()) {
-                lastErrorMessage = "can't create user data directory";
-                return -1;
-            }
-        }
-
-        if (scriptPath != null) {
-            // start new script
-            scriptFile = new File(scriptPath);
-            if (loadScript(scriptFile, scriptUserDataDir)) {
-                if (script == null) {
-                    Log.e(TAG, "Script object is null");
-                } else {
-                    activeChain = script.getActiveChain();
-                }
-                return 0;
-            }
-            StorageLib.recursiveDeleteFile(scriptUserDataDir);
-            return -1;
-        } else {
-            return loadScriptStateFromFile(scriptUserDataDir);
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        saveScriptStateToFile();
-    }
-
-    private boolean loadScript(File scriptFile, File scriptUserDataDir) {
-        ScriptComponentFragmentFactory factory = new ScriptComponentFragmentFactory();
-        LuaScriptLoader loader = new LuaScriptLoader(factory);
-        script = loader.load(scriptFile);
-        if (script == null) {
-            lastErrorMessage = loader.getLastError();
-            return false;
-        }
-
-        script.setUserDataDirectory(scriptUserDataDir);
-        script.setListener(this);
-        return true;
-    }
-
-    /**
-     * Load a script that has been stored in the given directory.
-     *
-     * @param scriptUserDataDir directory where the user data is stored
-     * @return the index of the last selected fragment or -1 if an error occurred
-     */
-    private int loadScriptStateFromFile(File scriptUserDataDir) {
-        File userDataFile = new File(scriptUserDataDir, SCRIPT_USER_DATA_FILENAME);
-
-        Bundle bundle;
-        InputStream inStream;
-        try {
-            inStream = new FileInputStream(userDataFile);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            lastErrorMessage = "can't open script file \"" + userDataFile.getPath() + "\"";
-            return -1;
-        }
-
-        PersistentBundle persistentBundle = new PersistentBundle();
-        try {
-            bundle = persistentBundle.unflattenBundle(inStream);
-        } catch (Exception e) {
-            e.printStackTrace();
-            lastErrorMessage = "can't read bundle from \"" + userDataFile.getPath() + "\"";
-            return -1;
-        }
-
-        String scriptName = bundle.getString("script_name");
-        if (scriptName == null) {
-            lastErrorMessage = "bundle contains no script_name";
-            return -1;
-        }
-
-        scriptFile = new File(scriptUserDataDir, scriptName);
-        if (!loadScript(scriptFile, scriptUserDataDir)) {
-            return -1;
-        }
-
-        if (script == null) {
-            Log.e(TAG, "Script object is null");
-            return -1;
-        }
-
-        if (!script.loadScriptState(bundle)) {
-            lastErrorMessage = script.getLastError();
-            script = null;
-            return -1;
-        }
-
-        activeChain = script.getActiveChain();
-
-        return bundle.getInt("current_fragment", 0);
     }
 
     /**
@@ -299,30 +186,6 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         return pager != null ? pager.getCurrentItem() : -1;
     }
 
-/*    *//**
-     * Extracts the user answers from a bundle and saves them to a file.
-     *
-     * This function is simply implemented to provide users with a more readable
-     * version of their answers than what is provided in the XML data saved as
-     * the persistentBundle for the application.
-     *
-     * This file is saved to the Downloads folder and is overwritten each time,
-     * so there should only ever be one file associated with user data in the
-     * Downloads folder.
-     *
-     * @param bundle the top-level (script-level) bundle of data
-     * @return true if everything is written successfully; false otherwise
-     *//*
-    @Contract("null -> false")
-    private boolean saveUserAnswersToDownloadsFile(Bundle bundle) {
-        if (bundle == null)
-            return false;
-
-        // get fileWriter object
-        FileWriter fileWriter = downloadFileWriter(SCRIPT_STUDENT_ANSWERS_FILENAME);
-        return fileWriter != null && saveUserAnswersToFile(bundle, fileWriter);
-    }*/
-
     /**
      * Extracts the user answers from a bundle and saves them to a file.
      *
@@ -336,7 +199,6 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
      * @param bundle the top-level (script-level) bundle of data
      * @return true if everything is written successfully; false otherwise
      */
-    @Contract("null -> false")
     private boolean saveUserAnswersToExperimentFile(@Nullable Bundle bundle) {
         if (bundle == null) {
             return false;
@@ -355,7 +217,6 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
      * @param fileWriter the FileWriter object in which to write user answers
      * @return true if everything is written successfully; false otherwise
      */
-    @Contract("null, null -> false")
     private boolean saveUserAnswersToFile(@Nullable Bundle bundle,
         @Nullable FileWriter fileWriter) {
         if (bundle == null || fileWriter == null) {
@@ -429,6 +290,61 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         showErrorAndFinish(error, null);
     }
 
+    /**
+     * Load a script that has been stored in the given directory.
+     *
+     * @param scriptUserDataDir directory where the user data is stored
+     * @return the index of the last selected fragment or -1 if an error occurred
+     */
+    private int loadScriptStateFromFile(File scriptUserDataDir) {
+        File userDataFile = new File(scriptUserDataDir, SCRIPT_USER_DATA_FILENAME);
+
+        Bundle bundle;
+        InputStream inStream;
+        try {
+            inStream = new FileInputStream(userDataFile);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            lastErrorMessage = "can't open script file \"" + userDataFile.getPath() + "\"";
+            return -1;
+        }
+
+        PersistentBundle persistentBundle = new PersistentBundle();
+        try {
+            bundle = persistentBundle.unflattenBundle(inStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+            lastErrorMessage = "can't read bundle from \"" + userDataFile.getPath() + "\"";
+            return -1;
+        }
+
+        String scriptName = bundle.getString("script_name");
+        if (scriptName == null) {
+            lastErrorMessage = "bundle contains no script_name";
+            return -1;
+        }
+
+        scriptFile = new File(scriptUserDataDir, scriptName);
+        if (!loadScript(scriptFile, scriptUserDataDir)) {
+            return -1;
+        }
+
+        if (script == null) {
+            Log.e(TAG, "Script object is null");
+            return -1;
+        }
+
+        if (!script.loadScriptState(bundle)) {
+            lastErrorMessage = script.getLastError();
+            script = null;
+            return -1;
+        }
+
+        activeChain = script.getActiveChain();
+
+        return bundle.getInt("current_fragment", 0);
+    }
+
     private void showErrorAndFinish(String error, @Nullable String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(error);
@@ -439,6 +355,176 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         AlertDialog dialog = builder.create();
         dialog.setOnDismissListener(dialogInterface -> finish());
         dialog.show();
+    }
+
+    /**
+     * Transforms an intent with a script from an external application into a
+     * new intent that will launch the shared script.
+     * <p>
+     * This method is used to start scripts which are in an unknown location. The
+     * data is copied into a new script in the Lablet scripts directory, and an
+     * intent to start the new script is returned.
+     * </p>
+     *
+     * @param intent the intent received from the system
+     * @return the new intent to be started
+     */
+    @Nullable
+    private Intent prepareExternalIntent(@NonNull Intent intent) {
+        Uri uri = intent.getData();
+        File scriptCopy = copyScriptToScriptDirectory(uri);
+        if (scriptCopy != null) {
+            final File directory = FileHelper.getScriptUserDataDir(this);
+            final String name = Script.generateScriptUid(scriptCopy.getName());
+            File scriptUserDataDir = new File(directory, name);
+            Intent newIntent = new Intent(this, ScriptRunnerActivity.class);
+            newIntent.putExtra("script_path", scriptCopy.getPath());
+            newIntent.putExtra("script_user_data_dir", scriptUserDataDir.getPath());
+            return newIntent;
+        }
+        return null;
+    }
+
+    private int createFromIntent() {
+        Intent intent = getIntent();
+        final String scriptPath = intent.getStringExtra("script_path");
+        final String userDataDir = intent.getStringExtra("script_user_data_dir");
+
+        if (userDataDir == null) {
+            lastErrorMessage = "user data directory is missing";
+            return -1;
+        }
+        File scriptUserDataDir = new File(userDataDir);
+        if (!scriptUserDataDir.exists()) {
+            if (!scriptUserDataDir.mkdir()) {
+                lastErrorMessage = "can't create user data directory";
+                return -1;
+            }
+        }
+
+        if (scriptPath != null) {
+            // start new script
+            scriptFile = new File(scriptPath);
+            if (loadScript(scriptFile, scriptUserDataDir)) {
+                if (script == null) {
+                    Log.e(TAG, "Script object is null");
+                } else {
+                    activeChain = script.getActiveChain();
+                }
+                return 0;
+            }
+            StorageLib.recursiveDeleteFile(scriptUserDataDir);
+            return -1;
+        } else {
+            return loadScriptStateFromFile(scriptUserDataDir);
+        }
+    }
+
+    private boolean loadScript(File scriptFile, File scriptUserDataDir) {
+        ScriptComponentFragmentFactory factory = new ScriptComponentFragmentFactory();
+        LuaScriptLoader loader = new LuaScriptLoader(factory);
+        script = loader.load(scriptFile);
+        if (script == null) {
+            lastErrorMessage = loader.getLastError();
+            return false;
+        }
+
+        script.setUserDataDirectory(scriptUserDataDir);
+        script.setListener(this);
+        return true;
+    }
+
+    /**
+     * Takes a Uri (probably a 'content:' Uri) and copies it into the Lablet directory.
+     * <p>
+     * This is mostly used to support launching scripts directly into Lablet, without
+     * needing to copy the script into the correct folder manually.
+     * </p>
+     * <p>
+     * Please note that this will overwrite any file with the same name in the scripts
+     * directory.
+     * </p>
+     *
+     * @param uri the Uri to copy
+     * @return the copy of the file
+     */
+    @Nullable
+    private File copyScriptToScriptDirectory(@Nullable Uri uri) {
+        if (uri == null) {
+            return null;
+        }
+
+        // compute the file name
+        String fileName = computeFileName(uri);
+
+        // copy script into the Lablet scripts directory
+        File scriptCopy = new File(FileHelper.getScriptDirectory(this), fileName);
+        try {
+            byte[] buf = new byte[4096];
+            int length;
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            if (inputStream == null) {
+                throw new IOException("could not open input stream");
+            }
+            FileOutputStream outputStream = new FileOutputStream(scriptCopy);
+            while ((length = inputStream.read(buf)) > 0) {
+                outputStream.write(buf, 0, length);
+            }
+            inputStream.close();
+            outputStream.close();
+        } catch (IOException e) {
+            return null;
+        }
+
+        return scriptCopy;
+    }
+
+    @Nullable
+    private String computeFileName(@NonNull Uri uri) {
+
+        // 'content' scheme will include the file name in the meta data
+        if (uri.getScheme().equals("content")) {
+
+            // open the Uri meta data so we can read the file name
+            final String[] nameProjection = {MediaColumns.DISPLAY_NAME};
+            Cursor uriMetaData = getContentResolver().query(uri, nameProjection, null, null, null);
+            if (uriMetaData == null) {
+                return null;
+            }
+
+            // move to first row of uri meta data and read display name, return if this fails
+            final int displayName = 0;
+            try {
+                return uriMetaData.moveToFirst() ? uriMetaData.getString(displayName) : null;
+            } finally {
+                uriMetaData.close();
+            }
+        }
+
+        // 'file' scheme will have the file name stored in the path
+        if (uri.getScheme().equals("file")) {
+            return uri.getLastPathSegment();
+        }
+
+        // unsupported scheme
+        return null;
+    }
+
+    @Nullable
+    public ScriptTreeNode getScriptComponentTreeAt(int index) {
+        if (index < 0 || index >= activeChain.size()) {
+            return null;
+        }
+        return activeChain.get(index);
+    }
+
+    public int getScriptComponentIndex(ScriptTreeNode component) {
+        return activeChain.indexOf(component);
+    }
+
+    @Nullable
+    public File getScriptUserDataDir() {
+        return script != null ? script.getUserDataDirectory() : null;
     }
 
     @Override
@@ -478,6 +564,7 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
 
         @NonNull
         private final Map<ScriptTreeNode, ScriptComponentGenericFragment> fragmentMap = new HashMap<>();
+
         private List<ScriptTreeNode> components;
 
         ScriptFragmentPagerAdapter(android.support.v4.app.FragmentManager fragmentManager,
@@ -501,11 +588,6 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
         }
 
         @Override
-        public int getCount() {
-            return components.size();
-        }
-
-        @Override
         public void destroyItem(ViewGroup container, int position, @NonNull Object object) {
             super.destroyItem(container, position, object);
             fragmentMap.remove(findComponentFor((Fragment) object));
@@ -521,7 +603,13 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
             return null;
         }
 
+        @Override
+        public int getCount() {
+            return components.size();
+        }
+
         // disable this code since it causes some invalidate problems, e.g., when starting a sub activity and going
+
         // going back some pages are not invalidated completely!
         /*@Override
         public int getItemPosition(Object object) {
