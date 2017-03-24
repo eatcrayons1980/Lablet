@@ -13,6 +13,7 @@ import android.media.MediaCodecInfo.CodecCapabilities;
 import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.Handler;
@@ -33,6 +34,9 @@ import org.jetbrains.annotations.Contract;
  * Reads a video file and displays it at given time position on the surface. The surface must be fully initialized.
  */
 public class SeekToFrameExtractor {
+
+    private static final boolean IS_LOLLIPOP = VERSION.SDK_INT == VERSION_CODES.LOLLIPOP;
+
     public interface IListener {
         /**
          * Is called from the extractor thread.
@@ -185,11 +189,23 @@ public class SeekToFrameExtractor {
                     continue;
                 }
 
+                // KEY_FRAME_RATE must be removed for Lollipop API
+                Integer saveFrameRate = 0;
+                if (IS_LOLLIPOP) {
+                    saveFrameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
+                    format.setString(MediaFormat.KEY_FRAME_RATE, null);
+                }
+
                 // does codec support his video format
                 try {
                     formatSupported = capabilities.isFormatSupported(format);
                 } catch (IllegalArgumentException ignored) {
                     continue;
+                }
+
+                // KEY_FRAME_RATE is restored
+                if (IS_LOLLIPOP) {
+                    format.setInteger(MediaFormat.KEY_FRAME_RATE, saveFrameRate);
                 }
 
                 // can we configure it successfully
