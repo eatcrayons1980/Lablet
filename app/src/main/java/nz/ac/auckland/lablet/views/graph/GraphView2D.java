@@ -177,27 +177,35 @@ public class GraphView2D extends PlotView {
      * Saves the view object to a PNG file in the Experiment folder.
      */
     private void saveToExperiment() {
-        ScriptRunnerActivity scriptRunnerActivity = (ScriptRunnerActivity) this.getContext();
-        int currentSheet = scriptRunnerActivity.getCurrentPagerItem();
-        String title = getTitleView().getTitle();
-        String pngFilename = String.format(Locale.UK, "Sheet%d_%s.png", currentSheet, title);
-        String csvFilename = String.format(Locale.UK, "Sheet%d_%s.csv", currentSheet, title);
-        save(FileHelper.experimentFileOutputStream(scriptRunnerActivity.script, pngFilename),
+        try {
+            ScriptRunnerActivity scriptRunnerActivity = (ScriptRunnerActivity) this.getContext();
+            int currentSheet = scriptRunnerActivity.getCurrentPagerItem();
+            String title = getTitleView().getTitle();
+            String pngFilename = String.format(Locale.UK, "Sheet%d_%s.png", currentSheet, title);
+            String csvFilename = String.format(Locale.UK, "Sheet%d_%s.csv", currentSheet, title);
+            save(FileHelper.experimentFileOutputStream(scriptRunnerActivity.script, pngFilename),
                 FileHelper.experimentFileWriter(scriptRunnerActivity.script, csvFilename));
-        Toast.makeText(getContext(), "Graph data saved to Experiment", Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), "Graph data saved to experiment", Toast.LENGTH_LONG).show();
+        } catch (ClassCastException ignored) {
+            Toast.makeText(getContext(), "Graph data not saved", Toast.LENGTH_LONG).show();
+        }
     }
     /**
      * Saves the view object to a PNG file in the user's Downloads.
      */
     private void saveToDownloads() {
-        ScriptRunnerActivity scriptRunnerActivity = (ScriptRunnerActivity) this.getContext();
-        int currentSheet = scriptRunnerActivity.getCurrentPagerItem();
-        String title = getTitleView().getTitle();
-        String pngFilename = String.format(Locale.UK, "Sheet%d_%s.png", currentSheet, title);
-        String csvFilename = String.format(Locale.UK, "Sheet%d_%s.csv", currentSheet, title);
-        save(FileHelper.downloadFileOutputStream(pngFilename),
-                FileHelper.downloadFileWriter(csvFilename));
-        Toast.makeText(getContext(), "Graph data saved to Downloads", Toast.LENGTH_LONG).show();
+        try {
+            ScriptRunnerActivity scriptRunnerActivity = (ScriptRunnerActivity) this.getContext();
+            int currentSheet = scriptRunnerActivity.getCurrentPagerItem();
+            String title = getTitleView().getTitle();
+            String pngFilename = String.format(Locale.UK, "Sheet%d_%s.png", currentSheet, title);
+            String csvFilename = String.format(Locale.UK, "Sheet%d_%s.csv", currentSheet, title);
+            save(FileHelper.downloadFileOutputStream(pngFilename),
+                    FileHelper.downloadFileWriter(csvFilename));
+            Toast.makeText(getContext(), "Graph data saved to downloads", Toast.LENGTH_LONG).show();
+        } catch (ClassCastException ignored) {
+            Toast.makeText(getContext(), "Graph data not saved", Toast.LENGTH_LONG).show();
+        }
     }
 
     /**
