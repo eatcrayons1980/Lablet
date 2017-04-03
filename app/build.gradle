@@ -61,7 +61,7 @@ android.applicationVariants.all { variant ->
         classpath = files(variant.javaCompile.classpath.files, androidJar)
         options {
             links "http://docs.oracle.com/javase/7/docs/api/"
-            linksOffline "http://d.android.com/reference","${android.sdkDirectory}/docs/reference"
+            linksOffline "http://d.android.com/reference", "${android.sdkDirectory}/docs/reference"
         }
         exclude '**/BuildConfig.java'
         exclude '**/R.java'
@@ -81,9 +81,9 @@ repositories {
 }
 
 dependencies {
+    // OpenCV libraries from: https://github.com/steveliles/opencv-android
     compile 'com.android.support:support-v4:25.2.0'
     compile 'com.android.support:support-annotations:25.2.0'
-    // OpenCV libraries from: https://github.com/steveliles/opencv-android
     compile 'org.opencv:OpenCV-Android:3.1.0'
     compile 'au.com.bytecode:opencsv:2.4'
     compile 'edu.emory.mathcs:JTransforms:2.4'
@@ -91,4 +91,5 @@ dependencies {
     compile 'org.jetbrains:annotations:15.0'
     testCompile 'junit:junit:4.12'
 }
+
 

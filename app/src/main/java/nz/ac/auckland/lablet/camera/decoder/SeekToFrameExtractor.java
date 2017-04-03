@@ -7,12 +7,14 @@
  */
 package nz.ac.auckland.lablet.camera.decoder;
 
+import android.content.Context;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecInfo.CodecCapabilities;
 import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.net.Uri;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
@@ -50,6 +52,26 @@ public class SeekToFrameExtractor {
 
     public SeekToFrameExtractor(File mediaFile, Surface surface) throws IOException {
         seekToThread = new SeekToThread(mediaFile, surface);
+        commonConstruction();
+    }
+
+    public SeekToFrameExtractor() {
+        seekToThread = new SeekToThread();
+    }
+
+    public boolean init(Context context, Uri uri, Surface surface) {
+        try {
+            seekToThread.initSeekToThread(context, uri, surface);
+        } catch (IOException e) {
+            seekToThread.quit();
+            release();
+            return false;
+        }
+        commonConstruction();
+        return true;
+    }
+
+    private void commonConstruction() {
         seekToThread.start();
         // wait till thread is up and running
         try {
@@ -78,10 +100,10 @@ public class SeekToFrameExtractor {
         return seekHandler.sendMessage(message);
     }
 
-    static class SeekHandler extends Handler {
+    private static class SeekHandler extends Handler {
         final SeekToThread thread;
 
-        public SeekHandler(SeekToThread thread) {
+        SeekHandler(SeekToThread thread) {
             this.thread = thread;
         }
 
@@ -98,7 +120,7 @@ public class SeekToFrameExtractor {
         }
     }
 
-    class SeekToThread extends Thread {
+    private class SeekToThread extends Thread {
         private static final String TAG = "SeekToThread";
         final static int SEEK_MESSAGE = 1;
 
@@ -109,10 +131,23 @@ public class SeekToFrameExtractor {
 
         Handler seekHandler;
 
-        public SeekToThread(File mediaFile, Surface surface) throws IOException {
+        SeekToThread() {
+            extractor = new MediaExtractor();
+        }
+
+        SeekToThread(File mediaFile, Surface surface) throws IOException {
             extractor = new MediaExtractor();
             extractor.setDataSource(mediaFile.getPath());
+            commonConstruction(surface);
+        }
 
+        void initSeekToThread(Context context, Uri uri, Surface surface) throws IOException {
+            extractor = new MediaExtractor();
+            extractor.setDataSource(context, uri, null);
+            commonConstruction(surface);
+        }
+
+        private void commonConstruction(Surface surface) throws IOException {
             for (int i = 0; i < extractor.getTrackCount(); i++) {
                 MediaFormat format = extractor.getTrackFormat(i);
                 String mime = format.getString(MediaFormat.KEY_MIME);
@@ -121,7 +156,7 @@ public class SeekToFrameExtractor {
                     extractor.selectTrack(i);
 
                     // newer Android devices have had issues with the codec selection process
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
                         decoder = configDecoder(format, surface);
                     } else {
                         decoder = MediaCodec.createDecoderByType(mime);
@@ -242,16 +277,22 @@ public class SeekToFrameExtractor {
         }
 
         // thread safe
-        public void quit() {
-            seekHandler.getLooper().quit();
+        void quit() {
+            if (seekHandler != null) {
+                seekHandler.getLooper().quit();
+            }
             try {
                 seekToThread.join();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            decoder.stop();
-            decoder.release();
-            extractor.release();
+            if (decoder != null) {
+                decoder.stop();
+                decoder.release();
+            }
+            if (extractor != null) {
+                extractor.release();
+            }
         }
 
         public void run() {

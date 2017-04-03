@@ -27,6 +27,7 @@
     android:requiresSmallestWidthDp="320"
     android:smallScreens="false"
     android:xlargeScreens="true" />
+
   <application
     android:allowBackup="true"
     android:icon="@drawable/ic_lablet"
@@ -35,35 +36,37 @@
     <activity
       android:icon="@drawable/ic_lablet"
       android:label="@string/app_name"
-      android:name="nz.ac.auckland.lablet.ExperimentHomeActivity" />
+      android:name=".ExperimentHomeActivity" />
     <activity
       android:icon="@drawable/ic_lablet"
       android:name=".ExperimentAnalysisActivity" />
     <activity
       android:configChanges="keyboardHidden|orientation|screenSize"
       android:icon="@drawable/ic_lab"
-      android:name="nz.ac.auckland.lablet.ExperimentActivity" />
+      android:name=".ExperimentActivity" />
     <activity
       android:icon="@drawable/ic_cut"
       android:name=".camera.MotionAnalysisSettingsActivity" />
     <activity
       android:icon="@drawable/ic_lablet"
       android:label="@string/script_activity_name"
-      android:name="nz.ac.auckland.lablet.ScriptHomeActivity">
+      android:name=".ScriptHomeActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
+
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
     <activity
       android:icon="@drawable/ic_console"
-      android:name="nz.ac.auckland.lablet.ScriptManagerActivity" />
+      android:name=".ScriptManagerActivity" />
     <activity
       android:icon="@drawable/ic_console"
-      android:name="nz.ac.auckland.lablet.script.ScriptRunnerActivity"
+      android:name=".script.ScriptRunnerActivity"
       android:windowSoftInputMode="stateHidden">
       <intent-filter android:label="Lablet Lab">
         <action android:name="android.intent.action.VIEW" />
+
         <category android:name="android.intent.category.DEFAULT" />
 
         <data android:scheme="content" />
@@ -77,5 +80,15 @@
       android:authorities="nz.ac.auckland.lablet.provider"
       android:exported="true"
       android:name=".misc.LabletDataProvider" />
+
+    <activity android:name=".FourDRuler"
+      android:icon="@drawable/ic_console">
+      <intent-filter android:label="Lablet 4D Ruler">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:scheme="content" android:mimeType="video/mp4" />
+      </intent-filter>
+    </activity>
   </application>
+
 </manifest>
