@@ -200,13 +200,15 @@ public class ScriptRunnerActivity extends FragmentActivity implements IScriptLis
      * @return true if everything is written successfully; false otherwise
      */
     private boolean saveUserAnswersToExperimentFile(@Nullable Bundle bundle) {
-        if (bundle == null) {
+        if (script == null || bundle == null) {
             return false;
         }
 
-        // get fileWriter object
-        FileWriter fileWriter = FileHelper
-            .experimentFileWriter(script, SCRIPT_STUDENT_ANSWERS_FILENAME);
+        final File dir = script.getUserDataDirectory();
+        final String filename = SCRIPT_STUDENT_ANSWERS_FILENAME;
+
+        FileWriter fileWriter = FileHelper.experimentFileWriter(dir, filename);
+
         return fileWriter != null && saveUserAnswersToFile(bundle, fileWriter);
     }
 

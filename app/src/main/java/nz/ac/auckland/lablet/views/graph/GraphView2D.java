@@ -7,6 +7,9 @@
  */
 package nz.ac.auckland.lablet.views.graph;
 
+import static nz.ac.auckland.lablet.utility.FileHelper.experimentFileOutputStream;
+import static nz.ac.auckland.lablet.utility.FileHelper.experimentFileWriter;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -15,12 +18,13 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.Toast;
+import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import nz.ac.auckland.lablet.ExperimentAnalysisActivity;
 import nz.ac.auckland.lablet.misc.Unit;
 import nz.ac.auckland.lablet.script.ScriptRunnerActivity;
 import nz.ac.auckland.lablet.utility.FileHelper;
@@ -161,7 +165,7 @@ public class GraphView2D extends PlotView {
 
                 ZoomDialog dialog = new ZoomDialog(getContext(), zoomGraphView, startBounds, finalBounds);
                 dialog.setOnDismissListener(dialogInterface -> {
-                    zoomGraphView.saveToExperiment();
+                    saveSelector();
                     zoomGraphView.release();
                 });
                 dialog.show();
@@ -172,55 +176,53 @@ public class GraphView2D extends PlotView {
         }
     }
 
+    /**
+     * Calculates the correct path in which to save plot data and then saves it.
+     */
+    private void saveSelector() {
+        File dir;
+        String pngFilename;
+        String csvFilename;
 
-    /**
-     * Saves the view object to a PNG file in the Experiment folder.
-     */
-    private void saveToExperiment() {
-        try {
-            ScriptRunnerActivity scriptRunnerActivity = (ScriptRunnerActivity) this.getContext();
-            int currentSheet = scriptRunnerActivity.getCurrentPagerItem();
+        if (getContext() instanceof ScriptRunnerActivity) {
+            ScriptRunnerActivity activity = (ScriptRunnerActivity) getContext();
+            int sheet = activity.getCurrentPagerItem();
             String title = getTitleView().getTitle();
-            String pngFilename = String.format(Locale.UK, "Sheet%d_%s.png", currentSheet, title);
-            String csvFilename = String.format(Locale.UK, "Sheet%d_%s.csv", currentSheet, title);
-            save(FileHelper.experimentFileOutputStream(scriptRunnerActivity.script, pngFilename),
-                FileHelper.experimentFileWriter(scriptRunnerActivity.script, csvFilename));
-            Toast.makeText(getContext(), "Graph data saved to experiment", Toast.LENGTH_LONG).show();
-        } catch (ClassCastException ignored) {
-            Toast.makeText(getContext(), "Graph data not saved", Toast.LENGTH_LONG).show();
+            dir = activity.getScriptUserDataDir();
+            pngFilename = "Sheet" + sheet + "_" + title + ".png";
+            csvFilename = "Sheet" + sheet + "_" + title + ".csv";
+        } else if (getContext() instanceof ExperimentAnalysisActivity) {
+            ExperimentAnalysisActivity activity = (ExperimentAnalysisActivity) getContext();
+            dir = activity.getExperimentAnalysis().getExperimentData().getStorageDir();
+            pngFilename = getTitleView().getTitle() + ".png";
+            csvFilename = getTitleView().getTitle() + ".csv";
+        } else {
+            Toast.makeText(getContext(), "Graph data NOT saved", Toast.LENGTH_LONG).show();
+            return;
         }
-    }
-    /**
-     * Saves the view object to a PNG file in the user's Downloads.
-     */
-    private void saveToDownloads() {
-        try {
-            ScriptRunnerActivity scriptRunnerActivity = (ScriptRunnerActivity) this.getContext();
-            int currentSheet = scriptRunnerActivity.getCurrentPagerItem();
-            String title = getTitleView().getTitle();
-            String pngFilename = String.format(Locale.UK, "Sheet%d_%s.png", currentSheet, title);
-            String csvFilename = String.format(Locale.UK, "Sheet%d_%s.csv", currentSheet, title);
-            save(FileHelper.downloadFileOutputStream(pngFilename),
-                    FileHelper.downloadFileWriter(csvFilename));
-            Toast.makeText(getContext(), "Graph data saved to downloads", Toast.LENGTH_LONG).show();
-        } catch (ClassCastException ignored) {
-            Toast.makeText(getContext(), "Graph data not saved", Toast.LENGTH_LONG).show();
-        }
+        saveToExperiment(dir, pngFilename, csvFilename);
     }
 
     /**
-     * Save the view object to a PNG file.
-     *
-     * @param pngFileStream stream used to PNG image file
-     * @param csvFileWriter {@link Writer} used to write CSV data file
+     * Saves plot data into png and csv formats.
+     * @param dir directory in which to save the files
+     * @param pngFilename filename for png file
+     * @param csvFilename filename for csv file
      */
-    private void save(FileOutputStream pngFileStream, Writer csvFileWriter) {
+    private void saveToExperiment(
+        final File dir,
+        final String pngFilename,
+        final String csvFilename) {
+
+        final FileOutputStream pngFile = experimentFileOutputStream(dir, pngFilename);
+        final FileWriter csvFile = experimentFileWriter(dir, csvFilename);
+
         int width = getWidth();
         int height = getHeight();
         int measureWidth = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY);
         int measureHeight = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY);
 
-        if (pngFileStream != null) {
+        if (pngFile != null) {
             // draw graph to a bitmap
             setAdapter(adapter);
             measure(measureWidth, measureHeight);
@@ -230,22 +232,23 @@ public class GraphView2D extends PlotView {
             draw(canvas);
 
             // compress and save bitmap
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, pngFileStream);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, pngFile);
             try {
-                pngFileStream.close();
+                pngFile.close();
             } catch (IOException e) {
                 Log.e(TAG, "Graph PNG file could not be closed for some reason.");
             }
         }
 
-        if (csvFileWriter != null) {
+        if (csvFile != null) {
             // save data points to CSV file
             List<Point> dataPoints = new ArrayList<>();
             for (int i = 0; i < adapter.getSize(); i++) {
                 dataPoints.add(new Point(adapter.getX(i).floatValue(), adapter.getY(i).floatValue()));
             }
-            FileHelper.writePlotDataToCSV(dataPoints, csvFileWriter);
+            FileHelper.writePlotDataToCSV(dataPoints, csvFile);
         }
+        Toast.makeText(getContext(), "Graph data saved", Toast.LENGTH_LONG).show();
     }
 
     public void release() {
