@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-      xmlns:yourapp="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/action_help"
-        android:icon="@drawable/ic_help"
-        android:title="@string/action_help"
-        yourapp:showAsAction="ifRoom|withText"/>
-    <item android:id="@+id/action_cancel"
-          android:icon="@drawable/ic_action_cancel"
-          android:title="@string/action_discard"
-          yourapp:showAsAction="ifRoom|withText"/>
-    <item android:id="@+id/action_apply"
-          android:icon="@drawable/ic_action_accept"
-          android:title="@string/action_apply"
-          yourapp:showAsAction="ifRoom|withText"/>
+<menu
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto">
+  <item
+    android:id="@+id/action_help"
+    android:icon="@drawable/ic_help"
+    android:title="@string/action_help"
+    app:showAsAction="ifRoom|withText" />
+  <item
+    android:id="@+id/action_cancel"
+    android:icon="@drawable/ic_action_cancel"
+    android:title="@string/action_discard"
+    app:showAsAction="ifRoom|withText" />
+  <item
+    android:id="@+id/action_apply"
+    android:icon="@drawable/ic_action_accept"
+    android:title="@string/action_apply"
+    app:showAsAction="ifRoom|withText" />
 </menu>

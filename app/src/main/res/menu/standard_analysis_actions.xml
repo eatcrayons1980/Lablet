@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-      xmlns:yourapp="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/action_data"
-          android:icon="@drawable/ic_lab"
-          android:title="@string/action_experiments"
-          yourapp:showAsAction="always"/>
-    <item android:id="@+id/action_done"
-          android:icon="@drawable/ic_action_accept"
-          android:title="@string/action_done"
-          yourapp:showAsAction="always"/>
+<menu
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto">
+  <item
+    android:id="@+id/action_data"
+    android:icon="@drawable/ic_lab"
+    android:title="@string/action_experiments"
+    app:showAsAction="always" />
+  <item
+    android:id="@+id/action_done"
+    android:icon="@drawable/ic_action_accept"
+    android:title="@string/action_done"
+    app:showAsAction="always" />
 </menu>

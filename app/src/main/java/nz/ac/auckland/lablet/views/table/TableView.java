@@ -12,7 +12,9 @@ import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
+import android.widget.BaseAdapter;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 
 
 /**
@@ -115,8 +117,8 @@ public class TableView extends ListView {
             if (getChildCount() == 0)
                 return 0;
             View view = getChildAt(0);
-            view.measure(MeasureSpec.makeMeasureSpec(ViewGroup.LayoutParams.WRAP_CONTENT, MeasureSpec.AT_MOST),
-                    MeasureSpec.makeMeasureSpec(ViewGroup.LayoutParams.WRAP_CONTENT, MeasureSpec.AT_MOST));
+            view.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.AT_MOST),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.AT_MOST));
             return view.getMeasuredHeight();
         }
 
@@ -134,11 +136,10 @@ public class TableView extends ListView {
 
     class TableListAdapter extends BaseAdapter {
         final private ITableAdapter adapter;
-        private int selectedRow = -1;
         final private int rowBackgroundColor = Color.WHITE;
         final private int headerRowBackgroundColor = Color.rgb(100, 100, 100);
         final private int selectedRowColor = Color.rgb(200, 200, 200);
-
+        private int selectedRow = -1;
         private ITableAdapter.IListener tableAdapterListener = new ITableAdapter.IListener() {
             @Override
             public void onRowAdded(ITableAdapter table, int row) {
