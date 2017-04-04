@@ -7,7 +7,11 @@
  */
 package nz.ac.auckland.lablet.views.plotview;
 
-import android.graphics.*;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PointF;
+import android.graphics.RectF;
 
 
 /**
@@ -81,17 +85,19 @@ public class LinearFitPainter extends AbstractPlotDataPainter {
                 labelMargin + labelHeight, labelBackgroundPaint);
         canvas.drawText(label, labelMargin, labelMargin - labelPaint.ascent(), labelPaint);
 
-        RectF range = containerView.getRange();
+        if (containerView != null) {
+            RectF range = containerView.getRange();
 
-        float yLeft = (float)(fit.getB() + fit.getM() * range.left);
-        float yRight = (float)(fit.getB() + fit.getM() * range.right);
+            float yLeft = (float) (fit.getB() + fit.getM() * range.left);
+            float yRight = (float) (fit.getB() + fit.getM() * range.right);
 
-        buffer.set(range.left, yLeft);
-        containerView.toScreen(buffer, lineStart);
-        buffer.set(range.right, yRight);
-        containerView.toScreen(buffer, lineEnd);
+            buffer.set(range.left, yLeft);
+            containerView.toScreen(buffer, lineStart);
+            buffer.set(range.right, yRight);
+            containerView.toScreen(buffer, lineEnd);
 
-        canvas.drawLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, fitPaint);
+            canvas.drawLine(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y, fitPaint);
+        }
     }
 
     private void fit() {
