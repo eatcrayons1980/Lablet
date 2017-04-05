@@ -286,7 +286,8 @@ public class ObjectTrackerAnalysis extends WeakListenable<ObjectTrackerAnalysis.
 
             outputSurface = new CodecOutputSurface(videodata.getVideoWidth(), videodata.getVideoHeight());
             try {
-                extractor = new SeekToFrameExtractor(videodata.getVideoFile(), outputSurface.getSurface());
+                extractor = new SeekToFrameExtractor();
+                extractor.init(videodata.getVideoFile(), outputSurface.getSurface());
             } catch (IOException e) {
                 return results;
             }

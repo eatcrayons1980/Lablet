@@ -114,7 +114,7 @@ class FourierRenderScript {
     public FourierRenderScript(Context context) {
         this.context = context;
         renderScript = RenderScript.create(context);
-        script = new ScriptC_fft(renderScript, context.getResources(), R.raw.fft);
+        script = new ScriptC_fft(renderScript);
     }
 
     public float[] renderScriptFFT(float[] data, int length, int windowSize, float stepFactor) {

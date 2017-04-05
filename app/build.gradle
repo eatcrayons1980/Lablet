@@ -16,10 +16,10 @@ android {
     defaultConfig {
         applicationId "nz.ac.auckland.lablet"
         minSdkVersion 19
-        targetSdkVersion 19
+        targetSdkVersion 25
         versionCode 319
         versionName "3.1.8"
-        renderscriptTargetApi 19
+        renderscriptTargetApi 24
         renderscriptSupportModeEnabled true
         jackOptions {
             enabled true
@@ -60,7 +60,7 @@ android.applicationVariants.all { variant ->
 
         classpath = files(variant.javaCompile.classpath.files, androidJar)
         options {
-            links "http://docs.oracle.com/javase/7/docs/api/"
+            links "http://docs.oracle.com/javase/8/docs/api/"
             linksOffline "http://d.android.com/reference", "${android.sdkDirectory}/docs/reference"
         }
         exclude '**/BuildConfig.java'
@@ -81,9 +81,11 @@ repositories {
 }
 
 dependencies {
-    // OpenCV libraries from: https://github.com/steveliles/opencv-android
+    // TODO: Remove 'noinspection GradleCompatible' (next line) and fix error
+    //noinspection GradleCompatible
     compile 'com.android.support:support-v4:25.3.1'
     compile 'com.android.support:support-annotations:25.3.1'
+    // OpenCV libraries from: https://github.com/steveliles/opencv-android
     compile 'org.opencv:OpenCV-Android:3.1.0'
     compile 'au.com.bytecode:opencsv:2.4'
     compile 'edu.emory.mathcs:JTransforms:2.4'

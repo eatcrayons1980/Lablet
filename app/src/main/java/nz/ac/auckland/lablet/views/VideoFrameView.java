@@ -74,14 +74,10 @@ public class VideoFrameView extends RatioGLSurfaceView {
     private void startSeekToFrameExtractor() {
         File videoFile = new File(videoFilePath);
         try {
-            seekToFrameExtractor = new SeekToFrameExtractor(videoFile, frameRenderer.getSurface());
+            seekToFrameExtractor = new SeekToFrameExtractor();
+            seekToFrameExtractor.init(videoFile, frameRenderer.getSurface());
             frameRenderer.getSurfaceTexture().setOnFrameAvailableListener(
-                    new SurfaceTexture.OnFrameAvailableListener() {
-                @Override
-                public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-                    requestRender();
-                }
-            });
+                surfaceTexture -> requestRender());
             if (targetSeekPosition >= 0)
                 seekToFrame(targetSeekPosition);
         } catch (IOException e) {

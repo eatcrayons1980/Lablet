@@ -7,8 +7,18 @@
  */
 package nz.ac.auckland.lablet.camera.decoder;
 
+import static android.media.MediaCodec.BUFFER_FLAG_END_OF_STREAM;
+import static android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED;
+import static android.media.MediaCodec.INFO_TRY_AGAIN_LATER;
+import static android.media.MediaCodec.createDecoderByType;
+import static android.media.MediaCodecList.REGULAR_CODECS;
+import static android.media.MediaFormat.KEY_FRAME_RATE;
+import static android.media.MediaFormat.KEY_MIME;
+import static android.os.Build.VERSION_CODES.LOLLIPOP;
+
 import android.content.Context;
 import android.media.MediaCodec;
+import android.media.MediaCodec.BufferInfo;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecInfo.CodecCapabilities;
 import android.media.MediaCodecList;
@@ -16,11 +26,11 @@ import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
 import android.os.Build.VERSION;
-import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
@@ -29,7 +39,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Semaphore;
-import org.jetbrains.annotations.Contract;
 
 
 /**
@@ -37,51 +46,56 @@ import org.jetbrains.annotations.Contract;
  */
 public class SeekToFrameExtractor {
 
-    private static final boolean IS_LOLLIPOP = VERSION.SDK_INT == VERSION_CODES.LOLLIPOP;
+    private static final String TAG = "SeekToFrameExtractor";
+    private static final boolean IS_LOLLIPOP = VERSION.SDK_INT == LOLLIPOP;
 
+    /**
+     * Called when a frame has been extracted.
+     */
     public interface IListener {
-        /**
-         * Is called from the extractor thread.
-         */
         void onFrameExtracted();
     }
 
     private SeekToThread seekToThread;
+    @NonNull
     private final Semaphore threadReadySemaphore = new Semaphore(0);
+    @Nullable
     private IListener listener = null;
-
-    public SeekToFrameExtractor(File mediaFile, Surface surface) throws IOException {
-        seekToThread = new SeekToThread(mediaFile, surface);
-        commonConstruction();
-    }
 
     public SeekToFrameExtractor() {
         seekToThread = new SeekToThread();
     }
 
-    public boolean init(Context context, Uri uri, Surface surface) {
+    public void init(@NonNull File mediaFile, Surface surface) throws IOException {
+        seekToThread.attachFile(mediaFile, surface);
+        seekToThread.start();
         try {
-            seekToThread.initSeekToThread(context, uri, surface);
+            threadReadySemaphore.acquire();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "could not acquire semaphore");
+        }
+    }
+
+    public boolean init(@NonNull Context context, @NonNull Uri uri, @NonNull Surface surface) {
+        try {
+            seekToThread.attachContentUri(context, uri, surface);
         } catch (IOException e) {
+            Log.e(TAG, "init failed");
             seekToThread.quit();
             release();
             return false;
         }
-        commonConstruction();
-        return true;
-    }
-
-    private void commonConstruction() {
         seekToThread.start();
-        // wait till thread is up and running
         try {
             threadReadySemaphore.acquire();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.e(TAG, "could not acquire semaphore");
+            return false;
         }
+        return true;
     }
 
-    public void setListener(IListener listener) {
+    public void setListener(@Nullable IListener listener) {
         this.listener = listener;
     }
 
@@ -108,8 +122,7 @@ public class SeekToFrameExtractor {
         }
 
         @Override
-        public void handleMessage(Message message)
-        {
+        public void handleMessage(@NonNull Message message) {
             if (message.what != SeekToThread.SEEK_MESSAGE)
                 return;
             Bundle data = message.peekData();
@@ -121,57 +134,71 @@ public class SeekToFrameExtractor {
     }
 
     private class SeekToThread extends Thread {
+
         private static final String TAG = "SeekToThread";
-        final static int SEEK_MESSAGE = 1;
+        private static final int DEQUE_TIMEOUT = 1000;
+        static final int SEEK_MESSAGE = 1;
 
-        private MediaExtractor extractor;
-        private MediaCodec decoder;
-        private MediaCodec.BufferInfo bufferInfo;
+        @NonNull
+        private final MediaExtractor extractor = new MediaExtractor();
+        @NonNull
+        private final BufferInfo bufferInfo = new BufferInfo();
+
+        private MediaCodec decoder = null;
+
         ByteBuffer[] inputBuffers;
-
         Handler seekHandler;
 
-        SeekToThread() {
-            extractor = new MediaExtractor();
+        private void attachFile(
+            @NonNull File mediaFile,
+            @NonNull Surface surface) throws IOException {
+            try {
+                extractor.setDataSource(mediaFile.getPath());
+                startDecoder(surface);
+            } catch (IOException e) {
+                Log.e(TAG, "could not attach file to surface");
+                throw e;
+            }
         }
 
-        SeekToThread(File mediaFile, Surface surface) throws IOException {
-            extractor = new MediaExtractor();
-            extractor.setDataSource(mediaFile.getPath());
-            commonConstruction(surface);
+        private void attachContentUri(
+            @NonNull Context context,
+            @NonNull Uri uri,
+            @NonNull Surface surface) throws IOException {
+            try {
+                extractor.setDataSource(context, uri, null);
+                startDecoder(surface);
+            } catch (IOException e) {
+                Log.e(TAG, "could not attach content uri to surface");
+                throw e;
+            }
         }
 
-        void initSeekToThread(Context context, Uri uri, Surface surface) throws IOException {
-            extractor = new MediaExtractor();
-            extractor.setDataSource(context, uri, null);
-            commonConstruction(surface);
-        }
-
-        private void commonConstruction(Surface surface) throws IOException {
+        private void startDecoder(@NonNull Surface surface) throws IOException {
             for (int i = 0; i < extractor.getTrackCount(); i++) {
                 MediaFormat format = extractor.getTrackFormat(i);
-                String mime = format.getString(MediaFormat.KEY_MIME);
+                String mime = format.getString(KEY_MIME);
 
                 if (mime.startsWith("video/")) {
                     extractor.selectTrack(i);
-
                     // newer Android devices have had issues with the codec selection process
-                    if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
-                        decoder = configDecoder(format, surface);
-                    } else {
-                        decoder = MediaCodec.createDecoderByType(mime);
+                    if (VERSION.SDK_INT < LOLLIPOP) {
+                        try {
+                            decoder = createDecoderByType(mime);
+                        } catch (IOException e) {
+                            Log.e(TAG, "could not configure decoder");
+                            throw e;
+                        }
                         decoder.configure(format, surface, null, 0);
+                        decoder.start();
+                        return;
+                    } else {
+                        decoder = configDecoder(format, surface);
+                        decoder.start();
+                        return;
                     }
-
-                    break;
                 }
             }
-            if (decoder == null)
-                throw new IOException();
-
-            decoder.start();
-
-            bufferInfo = new MediaCodec.BufferInfo();
         }
 
         /**
@@ -198,26 +225,19 @@ public class SeekToFrameExtractor {
          * @param surface the surface to attach to the codec
          * @return the configured decoder, or null if an error occurred
          */
-        @Contract("null, _ -> null; !null, null -> null")
-        @RequiresApi(api = VERSION_CODES.LOLLIPOP)
-        @Nullable
-        private MediaCodec configDecoder(@Nullable MediaFormat format, @Nullable Surface surface) {
+        @RequiresApi(api = LOLLIPOP)
+        @NonNull
+        private MediaCodec configDecoder(
+            @NonNull MediaFormat format,
+            @NonNull Surface surface) throws IOException {
 
-            if (format == null || surface == null) {
-                return null;
-            }
+            final MediaCodecList list = new MediaCodecList(REGULAR_CODECS);
 
-            MediaCodec codec;
-            String mime = format.getString(MediaFormat.KEY_MIME);
-            MediaCodecList list = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
-            MediaCodecInfo[] infos = list.getCodecInfos();
-
-            for (MediaCodecInfo info : infos) {
-
+            for (MediaCodecInfo info : list.getCodecInfos()) {
                 CodecCapabilities capabilities;
                 boolean formatSupported;
-
                 // does codec support this mime type
+                String mime = format.getString(KEY_MIME);
                 try {
                     capabilities = info.getCapabilitiesForType(mime);
                 } catch (IllegalArgumentException ignored) {
@@ -227,8 +247,8 @@ public class SeekToFrameExtractor {
                 // KEY_FRAME_RATE must be removed for Lollipop API
                 Integer saveFrameRate = 0;
                 if (IS_LOLLIPOP) {
-                    saveFrameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
-                    format.setString(MediaFormat.KEY_FRAME_RATE, null);
+                    saveFrameRate = format.getInteger(KEY_FRAME_RATE);
+                    format.setString(KEY_FRAME_RATE, null);
                 }
 
                 // does codec support his video format
@@ -240,11 +260,13 @@ public class SeekToFrameExtractor {
 
                 // KEY_FRAME_RATE is restored
                 if (IS_LOLLIPOP) {
-                    format.setInteger(MediaFormat.KEY_FRAME_RATE, saveFrameRate);
+                    format.setInteger(KEY_FRAME_RATE, saveFrameRate);
                 }
 
                 // can we configure it successfully
                 if (formatSupported) {
+                    MediaCodec codec;
+                    if (info.getName().contains("xynos")) continue;;
                     Log.i(TAG, "trying decoder: " + info.getName());
                     try {
                         codec = MediaCodec.createByCodecName(info.getName());
@@ -267,8 +289,8 @@ public class SeekToFrameExtractor {
                 }
             } // end of for loop
 
-            Log.e(TAG, "no decoder successfully configured.");
-            return null;
+            Log.e(TAG, "decoder configuration failed");
+            throw new IOException();
         }
 
         // thread safe
@@ -290,9 +312,7 @@ public class SeekToFrameExtractor {
                 decoder.stop();
                 decoder.release();
             }
-            if (extractor != null) {
-                extractor.release();
-            }
+            extractor.release();
         }
 
         public void run() {
@@ -303,56 +323,80 @@ public class SeekToFrameExtractor {
         }
 
         private void performSeekTo(long seekTarget) {
-            final int DEQUE_TIMEOUT = 1000;
 
-            inputBuffers = decoder.getInputBuffers();
+            if (decoder != null) {
+                // TODO: Update for API 21
+                //noinspection deprecation
+                inputBuffers = decoder.getInputBuffers();
+            }
 
             // coarse seek
             extractor.seekTo(seekTarget, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
 
-            boolean endOfStream = false;
+            boolean endOfStreamFlag = false;
             // fine manual seek
             boolean positionReached = false;
             while (!positionReached) {
-                if (!endOfStream) {
-                    int inIndex = decoder.dequeueInputBuffer(DEQUE_TIMEOUT);
-                    if (inIndex >= 0) {
-                        ByteBuffer buffer = inputBuffers[inIndex];
-
-                        int sampleSize = extractor.readSampleData(buffer, 0);
-                        if (sampleSize < 0) {
-                            decoder.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-                            endOfStream = true;
-                        } else {
-                            decoder.queueInputBuffer(inIndex, 0, sampleSize, extractor.getSampleTime(), 0);
-                            extractor.advance();
-                        }
-                    }
+                if (!endOfStreamFlag) {
+                    endOfStreamFlag = advanceExtractor(decoder);
                 }
 
                 int outIndex = decoder.dequeueOutputBuffer(bufferInfo, DEQUE_TIMEOUT);
-                switch (outIndex) {
-                    case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
-                    case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
-                    case MediaCodec.INFO_TRY_AGAIN_LATER:
-                        break;
-                    default:
-                        boolean render = false;
-                        if (bufferInfo.presentationTimeUs - seekTarget >= 0
-                                || (bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                            positionReached = true;
-                            render = true;
-                        }
+                if (outIndex == INFO_OUTPUT_FORMAT_CHANGED) {
+                    Log.d(TAG, "buffer output format has changed");
+                    continue;
+                }
 
-                        decoder.releaseOutputBuffer(outIndex, render);
-                        if (render) {
-                            decoder.flush();
-                            if (listener != null)
-                                listener.onFrameExtracted();
-                        }
-                        break;
+                if (outIndex == INFO_TRY_AGAIN_LATER) {
+                    Log.d(TAG, "buffer dequeue must be tried again later");
+                    continue;
+                }
+
+                // Handle deprecated code on pre-API 21 systems
+                if (android.os.Build.VERSION.SDK_INT < LOLLIPOP) {
+                    //noinspection deprecation
+                    if (outIndex == android.media.MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                        continue;
+                    }
+                }
+
+                boolean render = false;
+                if (bufferInfo.presentationTimeUs - seekTarget >= 0
+                    || (bufferInfo.flags & BUFFER_FLAG_END_OF_STREAM) != 0) {
+                    positionReached = true;
+                    render = true;
+                }
+
+                decoder.releaseOutputBuffer(outIndex, render);
+                if (render) {
+                    decoder.flush();
+                    if (listener != null) {
+                        listener.onFrameExtracted();
+                    }
                 }
             }
+        }
+
+        /**
+         * Attempt to read more data from the class {@link MediaExtractor} object.
+         * @return true if end-of-stream reached, false otherwise
+         * @param codec reference to the class {@link MediaCodec}, which must be nonnull
+         */
+        private boolean advanceExtractor(@NonNull MediaCodec codec) {
+            int inIndex = codec.dequeueInputBuffer(DEQUE_TIMEOUT);
+            if (inIndex >= 0) {
+                ByteBuffer buffer = inputBuffers[inIndex];
+
+                int sampleSize = extractor.readSampleData(buffer, 0);
+                if (sampleSize < 0) {
+                    codec.queueInputBuffer(inIndex, 0, 0, 0, BUFFER_FLAG_END_OF_STREAM);
+                    return true;
+                } else {
+                    codec.queueInputBuffer(inIndex, 0, sampleSize, extractor.getSampleTime(), 0);
+                    extractor.advance();
+                }
+            }
+            return false;
         }
     }
 }

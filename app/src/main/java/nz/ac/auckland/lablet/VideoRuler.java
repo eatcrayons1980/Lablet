@@ -5,24 +5,30 @@ import static java.lang.Math.round;
 import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.SurfaceView;
 import nz.ac.auckland.lablet.camera.decoder.SeekToFrameExtractor;
 
-public class VideoRuler extends Activity implements GestureDetector.OnGestureListener {
+public class VideoRuler extends Activity implements
+    GestureDetector.OnGestureListener,
+    SeekToFrameExtractor.IListener {
 
     private static final String TAG = "VideoRuler";
-    public static final int SEEK_MS_SLEEP = 100;
-    public static final int SEEK_SCALE = 3000;
+    private static final int SEEK_MS_SLEEP = 100;
+    private static final int SEEK_SCALE = 3000;
 
     private GestureDetector gestureDetector = null;
+    @Nullable
     private SeekToFrameExtractor extractor = null;
     private int currPosition = 0;
     private long lastTime = 0;
     private SurfaceView frameView;
     private Uri uri;
+    private boolean waitingForFrame;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,16 +40,23 @@ public class VideoRuler extends Activity implements GestureDetector.OnGestureLis
 
         uri = getIntent().getData();
         gestureDetector = new GestureDetector(this, this);
-
-        extractor = new SeekToFrameExtractor();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (extractor == null || !extractor.init(this, uri, frameView.getHolder().getSurface())) {
-            Log.e(TAG, "surface could not be attached to extractor");
-            extractor = null;
+        extractor = new SeekToFrameExtractor();
+        extractor.setListener(this);
+        waitingForFrame = false;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        waitingForFrame = false;
+        if (extractor != null) {
+            extractor.setListener(null);
+            extractor.release();
         }
     }
 
@@ -72,18 +85,25 @@ public class VideoRuler extends Activity implements GestureDetector.OnGestureLis
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
         currPosition += round(distanceX);
+        if (waitingForFrame) {
+            return true;
+        }
         long newTime = e2.getEventTime();
         if (newTime > lastTime + SEEK_MS_SLEEP) {
             lastTime = newTime;
+
             if (extractor == null) {
-                extractor = new SeekToFrameExtractor();
-                if (!extractor.init(getBaseContext(), uri, frameView.getHolder().getSurface())) {
-                    Log.e(TAG, "surface could not be attached to extractor");
-                    extractor = null;
-                }
-            } else {
-                extractor.seekToFrame(currPosition * SEEK_SCALE);
+                Log.e(TAG, "null extractor");
+                return true;
             }
+
+            if (!extractor.init(getBaseContext(), uri, frameView.getHolder().getSurface())) {
+                Log.e(TAG, "media extractor initialization failed");
+                return true;
+            }
+
+            waitingForFrame = true;
+            extractor.seekToFrame(currPosition * SEEK_SCALE);
         }
         return true;
     }
@@ -96,5 +116,10 @@ public class VideoRuler extends Activity implements GestureDetector.OnGestureLis
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
         return true;
+    }
+
+    @Override
+    public void onFrameExtracted() {
+        waitingForFrame = false;
     }
 }
