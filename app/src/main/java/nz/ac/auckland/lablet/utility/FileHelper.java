@@ -2,7 +2,6 @@ package nz.ac.auckland.lablet.utility;
 
 import android.content.Context;
 import android.os.Environment;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import java.io.File;
@@ -12,7 +11,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
 import java.util.Locale;
-import nz.ac.auckland.lablet.script.Script;
 import org.jetbrains.annotations.Contract;
 import org.opencv.core.Point;
 
@@ -92,33 +90,31 @@ public final class FileHelper {
      * Generates a {@link FileOutputStream} for writing to the file with the given filename in the
      * Lablet experiments directory.
      *
-     * @param script a reference to the {@link Script} object, so we can find the script directory
+     * @param dir
      * @param filename name of file linked to {@link FileOutputStream}
      * @return {@link FileOutputStream} object for writing to the file
      */
-    @Contract("null, _ -> null; _, null -> null")
-    public static FileOutputStream experimentFileOutputStream(Script script, String filename) {
-        if (script == null || filename == null || filename.equals(""))
+    public static FileOutputStream experimentFileOutputStream(File dir, String filename) {
+        if (dir == null || filename == null || filename.equals(""))
             return null;
 
-        Log.d(TAG, "Opening FileOutputStream to file in Experiment directory: " + script.getUserDataDirectory().getAbsolutePath() + "/" + filename);
-        return getFileOutputStream(script.getUserDataDirectory(), filename);
+        Log.d(TAG, "Opening FileOutputStream to file in Experiment directory: " + dir.getAbsolutePath() + "/" + filename);
+        return getFileOutputStream(dir, filename);
     }
 
     /**
      * Calls the {@link #getFileWriter(File, String)} method, specifying the directory for the experiment.
      *
-     * @param script a reference to the {@link Script} object, so we can find the script directory
+     * @param dir
      * @param filename name of file linked to {@link FileWriter}
      * @return a {@link FileWriter} object for writing to the file
      */
-    @Contract("null, null -> null")
-    public static FileWriter experimentFileWriter(Script script, String filename) {
-        if (script == null || filename == null || filename.equals(""))
+    public static FileWriter experimentFileWriter(File dir, String filename) {
+        if (dir == null || filename == null || filename.equals(""))
             return null;
 
-        Log.d(TAG, "Opening FileWriter to file in Experiment directory: " + script.getUserDataDirectory().getAbsolutePath() + "/" + filename);
-        return getFileWriter(script.getUserDataDirectory(), filename);
+        Log.d(TAG, "Opening FileWriter to file in Experiment directory: " + dir.getAbsolutePath() + "/" + filename);
+        return getFileWriter(dir, filename);
     }
 
     /**

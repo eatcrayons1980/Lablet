@@ -14,26 +14,41 @@ import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.graphics.Color;
 import android.util.SparseArray;
-import android.view.*;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.*;
-
-import nz.ac.auckland.lablet.vision.MotionTrackingStatusView;
-import org.opencv.core.Rect;
-
-import nz.ac.auckland.lablet.R;
-import nz.ac.auckland.lablet.views.marker.MarkerDataModel;
-import nz.ac.auckland.lablet.misc.Unit;
-import nz.ac.auckland.lablet.misc.WeakListenable;
-import nz.ac.auckland.lablet.views.graph.*;
-import nz.ac.auckland.lablet.views.plotview.DrawConfig;
-import nz.ac.auckland.lablet.views.plotview.LinearFitPainter;
-import nz.ac.auckland.lablet.views.table.*;
-import nz.ac.auckland.lablet.vision.ObjectTrackerAnalysis;
-import nz.ac.auckland.lablet.vision.VideoPlayer;
-
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
+import android.widget.Spinner;
 import java.util.ArrayList;
 import java.util.List;
+import nz.ac.auckland.lablet.R;
+import nz.ac.auckland.lablet.misc.Unit;
+import nz.ac.auckland.lablet.misc.WeakListenable;
+import nz.ac.auckland.lablet.views.graph.GraphView2D;
+import nz.ac.auckland.lablet.views.graph.MarkerGraphAdapter;
+import nz.ac.auckland.lablet.views.graph.MarkerTimeGraphAdapter;
+import nz.ac.auckland.lablet.views.graph.SelectedMarkerPainter;
+import nz.ac.auckland.lablet.views.graph.TimeMarkerGraphAxis;
+import nz.ac.auckland.lablet.views.graph.XPositionMarkerGraphAxis;
+import nz.ac.auckland.lablet.views.graph.XSpeedMarkerGraphAxis;
+import nz.ac.auckland.lablet.views.graph.YPositionMarkerGraphAxis;
+import nz.ac.auckland.lablet.views.graph.YSpeedMarkerGraphAxis;
+import nz.ac.auckland.lablet.views.marker.MarkerDataModel;
+import nz.ac.auckland.lablet.views.plotview.DrawConfig;
+import nz.ac.auckland.lablet.views.table.ITableAdapter;
+import nz.ac.auckland.lablet.views.table.MarkerDataTableAdapter;
+import nz.ac.auckland.lablet.views.table.RunIdDataTableColumn;
+import nz.ac.auckland.lablet.views.table.TableView;
+import nz.ac.auckland.lablet.views.table.TimeDataTableColumn;
+import nz.ac.auckland.lablet.views.table.XPositionDataTableColumn;
+import nz.ac.auckland.lablet.views.table.YPositionDataTableColumn;
+import nz.ac.auckland.lablet.vision.MotionTrackingStatusView;
+import nz.ac.auckland.lablet.vision.ObjectTrackerAnalysis;
+import nz.ac.auckland.lablet.vision.VideoPlayer;
+import org.opencv.core.Rect;
 
 
 class MotionAnalysisSideBar extends WeakListenable<MotionAnalysisSideBar.IListener> {
@@ -483,13 +498,7 @@ class MotionAnalysisFragmentView extends FrameLayout {
             return;
         GraphSpinnerEntry entry = graphSpinnerEntryList.get(i);
         MarkerGraphAdapter adapter = entry.getMarkerGraphAdapter();
-        LinearFitPainter fitPainter = null;
-        if (entry.getFit()) {
-            fitPainter = new LinearFitPainter();
-            fitPainter.setDataAdapter(adapter);
-        }
         graphView.setAdapter(adapter);
-        graphView.setFitPainter(fitPainter);
         DrawConfig selectedMarkerConfig = new DrawConfig(getContext());
         selectedMarkerConfig.getMarkerPaint().setColor(Color.RED);
         selectedMarkerPainter = new SelectedMarkerPainter(adapter, selectedMarkerConfig);

@@ -11,31 +11,36 @@ import android.graphics.PointF;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Bundle;
-import nz.ac.auckland.lablet.experiment.AbstractSensorData;
-import nz.ac.auckland.lablet.experiment.IExperimentSensor;
-
+import android.util.Log;
 import java.io.File;
 import java.io.IOException;
+import nz.ac.auckland.lablet.experiment.AbstractSensorData;
+import nz.ac.auckland.lablet.experiment.IExperimentSensor;
 
 
 /**
  * Holds all important data from a camera experiment.
  */
 public class VideoData extends AbstractSensorData {
-    private String videoFileName;
 
+    static final String DATA_TYPE = "Video";
+    final static int LOW_FRAME_RATE = 10;
+    private static final String TAG = "VideoData";
+    private static final float DEFAULT_FRAME_RATE = 24.0f;
+    private String videoFileName;
     // milli seconds
     private long videoDuration;
     private int videoWidth;
     private int videoHeight;
     private int videoFrameRate;
-
     private float recordingFrameRate;
-
-    static final public String DATA_TYPE = "Video";
 
     public VideoData(IExperimentSensor sourceSensor) {
         super(sourceSensor);
+    }
+
+    public VideoData() {
+        super();
     }
 
     @Override
@@ -43,20 +48,15 @@ public class VideoData extends AbstractSensorData {
         return DATA_TYPE;
     }
 
-    public VideoData() {
-        super();
-    }
-
-    public float getMaxRawX() {
+    float getMaxRawX() {
         return 100.f;
     }
 
-    public float getMaxRawY() {
+    float getMaxRawY() {
         float xToYRatio = (float)videoWidth / videoHeight;
         float xMax = getMaxRawX();
         return xMax / xToYRatio;
     }
-
 
     /**
      * Converts coordinates in marker space into coordinates in video space.
@@ -66,10 +66,9 @@ public class VideoData extends AbstractSensorData {
      */
     public PointF toVideoPoint(PointF markerPoint) {
         PointF videoPos = new PointF();
-        int videoX = (int)(markerPoint.x / this.getMaxRawX() * this.getVideoWidth());
-        float ySwappedDir = this.getMaxRawY() - markerPoint.y;
-        int height = this.getVideoHeight();
-        int videoY = (int)(ySwappedDir / this.getMaxRawY() * this.getVideoHeight());
+        int videoX = (int) (markerPoint.x / getMaxRawX() * getVideoWidth());
+        float ySwappedDir = getMaxRawY() - markerPoint.y;
+        int videoY = (int) (ySwappedDir / getMaxRawY() * getVideoHeight());
         videoPos.set(videoX, videoY);
         return videoPos;
     }
@@ -95,7 +94,16 @@ public class VideoData extends AbstractSensorData {
 
         setVideoFileName(storageDir, bundle.getString("videoName"));
 
-        recordingFrameRate = bundle.getFloat("recordingFrameRate", -1);
+        recordingFrameRate = bundle.getFloat("recordingFrameRate");
+        if (recordingFrameRate <= 0) {
+            if (videoFrameRate > 0) {
+                Log.i(TAG, "no recording frame rate found - using video frame rate");
+                recordingFrameRate = videoFrameRate;
+            } else {
+                Log.i(TAG, "no recording frame rate found - using " + DEFAULT_FRAME_RATE);
+                recordingFrameRate = DEFAULT_FRAME_RATE;
+            }
+        }
         return true;
     }
 
@@ -117,7 +125,7 @@ public class VideoData extends AbstractSensorData {
      * @param storageDir directory where the video file is stored
      * @param fileName path of the taken video
      */
-    public void setVideoFileName(File storageDir, String fileName) {
+    void setVideoFileName(File storageDir, String fileName) {
         this.videoFileName = fileName;
 
         String videoFilePath = new File(storageDir, fileName).getPath();
@@ -165,22 +173,20 @@ public class VideoData extends AbstractSensorData {
      *
      * @return the duration of the recorded video
      */
-    public long getVideoDuration() {
+    long getVideoDuration() {
         return videoDuration;
     }
 
-    final static int LOW_FRAME_RATE = 10;
-
-    public boolean isRecordedAtReducedFrameRate() {
+    boolean isRecordedAtReducedFrameRate() {
         return recordingFrameRate < LOW_FRAME_RATE;
     }
 
-    public void setRecordingFrameRate(float recordingFrameRate) {
-        this.recordingFrameRate = recordingFrameRate;
+    float getRecordingFrameRate() {
+        return recordingFrameRate;
     }
 
-    public float getRecordingFrameRate() {
-        return recordingFrameRate;
+    void setRecordingFrameRate(float recordingFrameRate) {
+        this.recordingFrameRate = recordingFrameRate;
     }
 
     public int getVideoWidth() {
@@ -191,7 +197,7 @@ public class VideoData extends AbstractSensorData {
         return videoHeight;
     }
 
-    public int getVideoFrameRate() {
+    int getVideoFrameRate() {
         return videoFrameRate;
     }
 }

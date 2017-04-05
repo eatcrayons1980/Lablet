@@ -7,6 +7,7 @@
  */
 package nz.ac.auckland.lablet.camera;
 
+import android.util.Log;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +16,10 @@ import java.util.List;
  * Helper class for various common frame rate related methods.
  */
 class FrameRateHelper {
-    static public List<Float> getPossibleAnalysisFrameRates(int maxFrameRate) {
+
+    private static final String TAG = "FrameRateHelper";
+
+    static List<Float> getPossibleAnalysisFrameRates(int maxFrameRate) {
         // sanitize the frame rate a bit
         if (maxFrameRate >= 27)
             maxFrameRate = 30;
@@ -30,8 +34,8 @@ class FrameRateHelper {
         return frameRateList;
     }
 
-    static public List<Float> getPossibleLowAnalysisFrameRates(float maxFrameRate) {
-        if (maxFrameRate > VideoData.LOW_FRAME_RATE)
+    static List<Float> getPossibleLowAnalysisFrameRates(float maxFrameRate) {
+        if (maxFrameRate <= 0 || maxFrameRate > VideoData.LOW_FRAME_RATE)
             throw new RuntimeException("bad frame rate");
 
         List<Float> frameRateList = new ArrayList<>();
@@ -53,11 +57,12 @@ class FrameRateHelper {
         frameRateList.add(0.016666666f); // every minute
         frameRateList.add(0.00333333f); // every 5 minutes
 
-        while (true) {
-            if (frameRateList.get(0) > maxFrameRate)
+        try {
+            while (maxFrameRate < frameRateList.get(0)) {
                 frameRateList.remove(0);
-            else
-                break;
+            }
+        } catch (IndexOutOfBoundsException ignored) {
+            Log.w(TAG, "very low frame rate detected");
         }
         if (frameRateList.size() == 0)
             frameRateList.add(maxFrameRate);
@@ -72,7 +77,7 @@ class FrameRateHelper {
      * @param targetFrameRate the desired frame rate
      * @return a analysis frame rate that is closed to the target frame rate
      */
-    static public float getBestPossibleAnalysisFrameRate(int maxFrameRate, int targetFrameRate) {
+    static float getBestPossibleAnalysisFrameRate(int maxFrameRate, int targetFrameRate) {
         List<Float> possibleAnalysisFrameRates = getPossibleAnalysisFrameRates(maxFrameRate);
 
         float bestMatchingFrameRate = maxFrameRate;
