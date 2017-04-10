@@ -14,7 +14,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.SparseArray;
-
 import nz.ac.auckland.lablet.camera.MotionAnalysis;
 import nz.ac.auckland.lablet.camera.VideoData;
 import nz.ac.auckland.lablet.camera.decoder.CodecOutputSurface;
@@ -23,40 +22,24 @@ import nz.ac.auckland.lablet.experiment.FrameDataModel;
 import nz.ac.auckland.lablet.misc.WeakListenable;
 import nz.ac.auckland.lablet.views.marker.MarkerData;
 import nz.ac.auckland.lablet.views.marker.MarkerDataModel;
-import nz.ac.auckland.lablet.vision.data.*;
-
+import nz.ac.auckland.lablet.vision.data.RectData;
+import nz.ac.auckland.lablet.vision.data.RectDataList;
+import nz.ac.auckland.lablet.vision.data.RoiData;
+import nz.ac.auckland.lablet.vision.data.RoiDataList;
 import org.opencv.core.Rect;
-
-import java.io.IOException;
 
 
 public class ObjectTrackerAnalysis extends WeakListenable<ObjectTrackerAnalysis.IListener> {
-    public interface IListener {
-        void onTrackingStart();
-
-        void onTrackingFinished(SparseArray<Rect> results);
-
-        void onTrackingUpdate(int frameNumber, int totalNumberOfFrames);
-    }
-
     final private static String TAG = ObjectTrackerAnalysis.class.getName();
-
     final private String RECT_DATA_LIST = "rectDataList";
     final private String ROI_DATA_LIST = "roiDataList";
     final private String DEBUGGING_ENABLED = "debuggingEnabled";
-
     final private RoiDataList roiDataList;
     final private RectDataList rectDataList = new RectDataList();
-
+    final private CamShiftTracker tracker;
     private boolean debuggingEnabled = false;
 
     private MotionAnalysis motionAnalysis;
-    final private CamShiftTracker tracker;
-
-    private boolean isTracking = false;
-    private BackgroundTask task;
-    private long startTimeMs;
-
     RoiDataList.IListener<RoiDataList, RoiData> roiDataListener = new RoiDataList.IListener<RoiDataList, RoiData>() {
         @Override
         public void onDataAdded(RoiDataList model, int index) {
@@ -85,6 +68,9 @@ public class ObjectTrackerAnalysis extends WeakListenable<ObjectTrackerAnalysis.
             motionAnalysis.getFrameDataModel().setCurrentFrame(model.getAt(index).getFrameId());
         }
     };
+    private boolean isTracking = false;
+    private BackgroundTask task;
+    private long startTimeMs;
 
     public ObjectTrackerAnalysis(MotionAnalysis motionAnalysis, FrameDataModel frameDataModel) {
         this.motionAnalysis = motionAnalysis;
@@ -253,6 +239,15 @@ public class ObjectTrackerAnalysis extends WeakListenable<ObjectTrackerAnalysis.
         return bundle;
     }
 
+    public interface IListener {
+
+        void onTrackingStart();
+
+        void onTrackingFinished(SparseArray<Rect> results);
+
+        void onTrackingUpdate(int frameNumber, int totalNumberOfFrames);
+    }
+
     private class BackgroundTask extends AsyncTask<Void, Float, SparseArray<Rect>> {
         final int startFrame;
         final int endFrame;
@@ -287,8 +282,9 @@ public class ObjectTrackerAnalysis extends WeakListenable<ObjectTrackerAnalysis.
             outputSurface = new CodecOutputSurface(videodata.getVideoWidth(), videodata.getVideoHeight());
             try {
                 extractor = new SeekToFrameExtractor();
+                // TODO: check this
                 extractor.init(videodata.getVideoFile(), outputSurface.getSurface());
-            } catch (IOException e) {
+            } catch (RuntimeException e) {
                 return results;
             }
 

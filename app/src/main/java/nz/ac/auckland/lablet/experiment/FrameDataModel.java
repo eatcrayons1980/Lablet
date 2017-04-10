@@ -9,19 +9,10 @@ package nz.ac.auckland.lablet.experiment;
 
 import nz.ac.auckland.lablet.misc.WeakListenable;
 
-import java.util.ArrayList;
-import java.util.List;
-
-
 /**
  * Data model for the set of frames of an experiment.
  */
 public class FrameDataModel extends WeakListenable<FrameDataModel.IListener>{
-    public interface IListener {
-        public void onFrameChanged(int newFrame);
-        public void onNumberOfFramesChanged();
-    }
-
     private int currentFrame;
     private int numberOfFrames;
 
@@ -54,5 +45,12 @@ public class FrameDataModel extends WeakListenable<FrameDataModel.IListener>{
     private void notifyNumberOfFramesChanged() {
         for (IListener listener : getListeners())
             listener.onNumberOfFramesChanged();
+    }
+
+    public interface IListener {
+
+        void onFrameChanged(int newFrame);
+
+        void onNumberOfFramesChanged();
     }
 }

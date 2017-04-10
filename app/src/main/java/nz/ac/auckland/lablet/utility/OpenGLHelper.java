@@ -4,7 +4,6 @@ import static android.opengl.GLU.gluErrorString;
 
 import android.opengl.GLES20;
 import android.util.Log;
-import nz.ac.auckland.lablet.BuildConfig;
 
 /**
  * Commonly used methods for working with OpenGL code.

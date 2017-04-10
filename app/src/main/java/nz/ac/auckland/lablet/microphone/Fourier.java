@@ -12,28 +12,26 @@ import android.support.v8.renderscript.Allocation;
 import android.support.v8.renderscript.Element;
 import android.support.v8.renderscript.RenderScript;
 import edu.emory.mathcs.jtransforms.dct.FloatDCT_1D;
-import nz.ac.auckland.lablet.R;
+import java.util.Arrays;
 import nz.ac.auckland.lablet.misc.AudioWavInputStream;
 
-import java.util.Arrays;
 
-
-public class Fourier {
+class Fourier {
     static private void hammingWindow(float[] samples) {
         for (int i = 0; i < samples.length; i++)
             samples[i] *= (0.54f - 0.46f * Math.cos(2 * Math.PI * i / (samples.length - 1)));
     }
 
-    static public float[] transform(float[] in) {
+    static float[] transform(float[] in) {
         return transform(in, 0, in.length);
     }
 
-    static public float[] transform(float[] in, int offset, int length) {
+    static private float[] transform(float[] in, int offset, int length) {
         final float trafo[] = Arrays.copyOfRange(in, offset, offset + length);
         return transformInternal(trafo);
     }
 
-    static public float[] transformOverlap(float[] prevAmplitudes, float[] amplitudes, int startPosition) {
+    static float[] transformOverlap(float[] prevAmplitudes, float[] amplitudes, int startPosition) {
         final int length = amplitudes.length;
         final float trafo[] = new float[length];
         System.arraycopy(prevAmplitudes, startPosition, trafo, 0, length - startPosition);
@@ -41,19 +39,20 @@ public class Fourier {
         return transformInternal(trafo);
     }
 
-    static public int getNSteps(int dataLength, int windowSize, int stepWidth) {
+    static int getNSteps(int dataLength, int windowSize, int stepWidth) {
         if (dataLength < windowSize)
             return 0;
         return (dataLength - windowSize) / stepWidth + 1;
     }
 
-    static public int getEffectiveDuration(AudioWavInputStream audioWavInputStream, int windowSize, float stepFactor) {
+    static int getEffectiveDuration(AudioWavInputStream audioWavInputStream, int windowSize,
+        float stepFactor) {
         final int stepWidth = (int)(stepFactor * windowSize);
         final int nSteps = Fourier.getNSteps(audioWavInputStream.getSize() / 2, windowSize, stepWidth);
         return audioWavInputStream.lengthToMilliSeconds(nSteps * stepWidth * audioWavInputStream.BYTES_PER_SAMPLE);
     }
 
-    static public float[] transform(float[] data, int windowSize, float stepFactor) {
+    static float[] transform(float[] data, int windowSize, float stepFactor) {
         final int stepWidth =  (int)(stepFactor * windowSize);
         final int nSteps = getNSteps(data.length, windowSize, stepWidth);
         final int outputSize = nSteps * windowSize / 2;
@@ -111,13 +110,13 @@ class FourierRenderScript {
     private RenderScript renderScript;
     private ScriptC_fft script;
 
-    public FourierRenderScript(Context context) {
+    FourierRenderScript(Context context) {
         this.context = context;
         renderScript = RenderScript.create(context);
         script = new ScriptC_fft(renderScript);
     }
 
-    public float[] renderScriptFFT(float[] data, int length, int windowSize, float stepFactor) {
+    float[] renderScriptFFT(float[] data, int length, int windowSize, float stepFactor) {
         if (length == 0)
             return new float[0];
         final int stepWidth = (int)(stepFactor * windowSize);

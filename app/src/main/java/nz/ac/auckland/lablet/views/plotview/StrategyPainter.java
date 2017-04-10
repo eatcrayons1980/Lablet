@@ -10,10 +10,8 @@ package nz.ac.auckland.lablet.views.plotview;
 
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.annotation.Nullable;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,30 +48,6 @@ abstract class ConcurrentPainter {
  * Abstract base class for different data rendering strategies.
  */
 abstract public class StrategyPainter extends AbstractPlotPainter {
-    public static class RenderPayload {
-        final private ConcurrentPainter painter;
-        final private RectF realDataRect;
-        final private RectF screenRect;
-
-        public RenderPayload(ConcurrentPainter painter, RectF realDataRect, RectF screenRect) {
-            this.painter = painter;
-            this.realDataRect = realDataRect;
-            this.screenRect = screenRect;
-        }
-
-        public RectF getRealDataRect() {
-            return realDataRect;
-        }
-
-        public RectF getScreenRect() {
-            return screenRect;
-        }
-
-        public ConcurrentPainter getPainter() {
-            return painter;
-        }
-    }
-
     final protected List<ConcurrentPainter> childPainters = new ArrayList<>();
 
     /**
@@ -130,5 +104,30 @@ abstract public class StrategyPainter extends AbstractPlotPainter {
 
     public RectF getDrawingRange() {
         return containerView.getRange();
+    }
+
+    public static class RenderPayload {
+
+        final private ConcurrentPainter painter;
+        final private RectF realDataRect;
+        final private RectF screenRect;
+
+        public RenderPayload(ConcurrentPainter painter, RectF realDataRect, RectF screenRect) {
+            this.painter = painter;
+            this.realDataRect = realDataRect;
+            this.screenRect = screenRect;
+        }
+
+        public RectF getRealDataRect() {
+            return realDataRect;
+        }
+
+        public RectF getScreenRect() {
+            return screenRect;
+        }
+
+        public ConcurrentPainter getPainter() {
+            return painter;
+        }
     }
 }

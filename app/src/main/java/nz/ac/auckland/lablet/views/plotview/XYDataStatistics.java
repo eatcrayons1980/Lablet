@@ -8,14 +8,13 @@
 package nz.ac.auckland.lablet.views.plotview;
 
 import android.graphics.RectF;
-import nz.ac.auckland.lablet.misc.WeakListenable;
 
 
 public class XYDataStatistics extends DataStatistics implements AbstractPlotDataAdapter.IListener {
     final private AbstractXYDataAdapter adapter;
+    final private boolean dataIsContinuously;
     private float sumX = 0;
     private float sumY = 0;
-    final private boolean dataIsContinuously;
 
     public XYDataStatistics(AbstractXYDataAdapter adapter, boolean dataIsContinuously) {
         this.adapter = adapter;

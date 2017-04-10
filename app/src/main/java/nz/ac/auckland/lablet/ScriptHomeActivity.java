@@ -205,9 +205,6 @@ public class ScriptHomeActivity extends Activity {
 
         // script options
         MenuItem scriptOptions = menu.findItem(R.id.action_script_options);
-        if (BuildConfig.DEBUG && scriptOptions == null) {
-            throw new RuntimeException("scriptOptions is null");
-        }
         scriptOptions.setOnMenuItemClickListener(menuItem -> {
             showScriptMenu();
             return true;
@@ -215,9 +212,6 @@ public class ScriptHomeActivity extends Activity {
 
         // to stand alone experiment screen
         MenuItem standAlone = menu.findItem(R.id.action_stand_alone);
-        if (BuildConfig.DEBUG && standAlone == null) {
-            throw new RuntimeException("standAlone is null");
-        }
         standAlone.setOnMenuItemClickListener(menuItem -> {
             startStandAloneExperimentActivity();
             return true;
@@ -225,9 +219,6 @@ public class ScriptHomeActivity extends Activity {
 
         // info item
         MenuItem infoItem = menu.findItem(R.id.action_info);
-        if (BuildConfig.DEBUG && infoItem == null) {
-            throw new RuntimeException("infoItem is null");
-        }
         String versionString = InfoHelper.getVersionString(this);
         infoItem.setTitle(versionString);
         infoAlertBox = InfoHelper.createAlertInfoBox(this);

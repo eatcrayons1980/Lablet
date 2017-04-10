@@ -8,16 +8,14 @@
 package nz.ac.auckland.lablet.views;
 
 import android.content.Context;
-import android.graphics.SurfaceTexture;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
-import nz.ac.auckland.lablet.camera.decoder.FrameRenderer;
-import nz.ac.auckland.lablet.camera.decoder.SeekToFrameExtractor;
-
 import java.io.File;
 import java.io.IOException;
+import nz.ac.auckland.lablet.camera.decoder.FrameRenderer;
+import nz.ac.auckland.lablet.camera.decoder.SeekToFrameExtractor;
 
 
 /**
@@ -75,12 +73,13 @@ public class VideoFrameView extends RatioGLSurfaceView {
         File videoFile = new File(videoFilePath);
         try {
             seekToFrameExtractor = new SeekToFrameExtractor();
+            // TODO: check this
             seekToFrameExtractor.init(videoFile, frameRenderer.getSurface());
             frameRenderer.getSurfaceTexture().setOnFrameAvailableListener(
                 surfaceTexture -> requestRender());
             if (targetSeekPosition >= 0)
                 seekToFrame(targetSeekPosition);
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
         }
     }

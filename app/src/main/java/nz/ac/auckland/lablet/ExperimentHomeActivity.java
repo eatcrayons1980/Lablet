@@ -125,8 +125,6 @@ public class ExperimentHomeActivity extends Activity {
 
         // script item
         MenuItem scriptItem = menu.findItem(R.id.action_scripts);
-        if (BuildConfig.DEBUG && scriptItem == null)
-            throw new RuntimeException();
         scriptItem.setOnMenuItemClickListener(menuItem -> {
             startScriptActivity();
             return true;
@@ -134,8 +132,6 @@ public class ExperimentHomeActivity extends Activity {
 
         // info item
         MenuItem infoItem = menu.findItem(R.id.action_info);
-        if (BuildConfig.DEBUG && infoItem == null)
-            throw new RuntimeException();
         String versionString = InfoHelper.getVersionString(this);
         infoItem.setTitle(versionString);
         infoAlertBox = InfoHelper.createAlertInfoBox(this);
@@ -146,8 +142,6 @@ public class ExperimentHomeActivity extends Activity {
 
         // import item
         MenuItem importItem = menu.findItem(R.id.action_import);
-        if (BuildConfig.DEBUG && importItem == null)
-            throw new RuntimeException();
         importItem.setOnMenuItemClickListener(menuItem -> {
             showImportMenu();
             return true;

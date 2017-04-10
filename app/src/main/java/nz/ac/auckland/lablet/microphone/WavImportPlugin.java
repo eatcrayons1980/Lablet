@@ -7,13 +7,11 @@
  */
 package nz.ac.auckland.lablet.microphone;
 
-import android.app.Activity;
+import java.io.File;
+import java.io.IOException;
 import nz.ac.auckland.lablet.experiment.AbstractFileImportPlugin;
 import nz.ac.auckland.lablet.misc.StorageLib;
 import nz.ac.auckland.lablet.misc.StreamHelper;
-
-import java.io.File;
-import java.io.IOException;
 
 
 public class WavImportPlugin extends AbstractFileImportPlugin {

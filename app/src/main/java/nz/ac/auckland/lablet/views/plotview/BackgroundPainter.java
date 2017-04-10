@@ -11,31 +11,27 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.view.MotionEvent;
+import java.util.List;
 import nz.ac.auckland.lablet.views.plotview.axes.LabelPartitioner;
 import nz.ac.auckland.lablet.views.plotview.axes.XAxisView;
 import nz.ac.auckland.lablet.views.plotview.axes.YAxisView;
 
-import java.util.List;
-
 
 public class BackgroundPainter extends AbstractPlotPainter {
-    final int DEFAULT_BACKGROUND_COLOR = Color.DKGRAY;
-    final int DEFAULT_MAIN_GRID_COLOR = Color.LTGRAY;
 
-    private Paint backgroundPaint = new Paint();
-    private Paint mainGridPaint = new Paint();
+    private final int DEFAULT_BACKGROUND_COLOR = Color.DKGRAY;
+    private final int DEFAULT_MAIN_GRID_COLOR = Color.LTGRAY;
     final private Rect bounds = new Rect();
-
     final private XAxisView xAxisView;
     final private YAxisView yAxisView;
-
+    private Paint backgroundPaint = new Paint();
+    private Paint mainGridPaint = new Paint();
     private boolean showXGrid = false;
     private boolean showYGrid = false;
 
     private PlotPainterContainerView containerView;
 
-    public BackgroundPainter(XAxisView xAxisView, YAxisView yAxisView) {
+    private BackgroundPainter(XAxisView xAxisView, YAxisView yAxisView) {
         this.xAxisView = xAxisView;
         this.yAxisView = yAxisView;
 

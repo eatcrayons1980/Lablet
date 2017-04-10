@@ -9,28 +9,13 @@ package nz.ac.auckland.lablet.views.marker;
 
 import android.graphics.PointF;
 import android.os.Bundle;
-
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
-
 
 /**
  * Data model for a list of marker.
  */
 public class MarkerDataModel extends AbstractPointDataList<MarkerData> {
-    /**
-     * Listener interface for the marker data model.
-     */
-    public interface IListener extends AbstractPointDataModel.IListener<MarkerDataModel, MarkerData> {
-        void onDataAdded(MarkerDataModel model, int index);
-        void onDataRemoved(MarkerDataModel model, int index, MarkerData data);
-        void onDataChanged(MarkerDataModel model, int index, int number);
-        void onAllDataChanged(MarkerDataModel model);
-        void onDataSelected(MarkerDataModel model, int index);
-    }
-
     public void selectMarkerData(MarkerData markerData) {
         int index = list.indexOf(markerData);
         if (index < 0)
@@ -167,5 +152,22 @@ public class MarkerDataModel extends AbstractPointDataList<MarkerData> {
                 return (int)(markerData.getPosition().y - markerData2.getPosition().y);
             }
         });
+    }
+
+    /**
+     * Listener interface for the marker data model.
+     */
+    public interface IListener extends
+        AbstractPointDataModel.IListener<MarkerDataModel, MarkerData> {
+
+        void onDataAdded(MarkerDataModel model, int index);
+
+        void onDataRemoved(MarkerDataModel model, int index, MarkerData data);
+
+        void onDataChanged(MarkerDataModel model, int index, int number);
+
+        void onAllDataChanged(MarkerDataModel model);
+
+        void onDataSelected(MarkerDataModel model, int index);
     }
 }

@@ -5,16 +5,17 @@ import static java.lang.Math.round;
 import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import nz.ac.auckland.lablet.camera.decoder.SeekToFrameExtractor;
 
 public class VideoRuler extends Activity implements
     GestureDetector.OnGestureListener,
+    SurfaceHolder.Callback,
     SeekToFrameExtractor.IListener {
 
     private static final String TAG = "VideoRuler";
@@ -40,24 +41,18 @@ public class VideoRuler extends Activity implements
 
         uri = getIntent().getData();
         gestureDetector = new GestureDetector(this, this);
+        frameView.getHolder().addCallback(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        extractor = new SeekToFrameExtractor();
-        extractor.setListener(this);
         waitingForFrame = false;
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        waitingForFrame = false;
-        if (extractor != null) {
-            extractor.setListener(null);
-            extractor.release();
-        }
     }
 
     @Override
@@ -85,20 +80,13 @@ public class VideoRuler extends Activity implements
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
         currPosition += round(distanceX);
-        if (waitingForFrame) {
-            return true;
-        }
+        Log.d(TAG, "scroll position currently " + currPosition);
         long newTime = e2.getEventTime();
         if (newTime > lastTime + SEEK_MS_SLEEP) {
             lastTime = newTime;
 
             if (extractor == null) {
                 Log.e(TAG, "null extractor");
-                return true;
-            }
-
-            if (!extractor.init(getBaseContext(), uri, frameView.getHolder().getSurface())) {
-                Log.e(TAG, "media extractor initialization failed");
                 return true;
             }
 
@@ -121,5 +109,34 @@ public class VideoRuler extends Activity implements
     @Override
     public void onFrameExtracted() {
         waitingForFrame = false;
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        Log.d(TAG, "surface created for SeekToFrame");
+        extractor = new SeekToFrameExtractor();
+        extractor.init(getBaseContext(), uri, frameView.getHolder().getSurface());
+        extractor.setListener(this);
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        Log.d(TAG, "surface changed for SeekToFrame");
+        if (extractor != null) {
+            extractor.release();
+            waitingForFrame = false;
+        }
+        extractor = new SeekToFrameExtractor();
+        extractor.init(getBaseContext(), uri, frameView.getHolder().getSurface());
+        extractor.setListener(this);
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        Log.d(TAG, "surface destroyed for SeekToFrame");
+        if (extractor != null) {
+            extractor.release();
+            waitingForFrame = false;
+        }
     }
 }
