@@ -31,7 +31,7 @@ public class BackgroundPainter extends AbstractPlotPainter {
 
     private PlotPainterContainerView containerView;
 
-    private BackgroundPainter(XAxisView xAxisView, YAxisView yAxisView) {
+    BackgroundPainter(XAxisView xAxisView, YAxisView yAxisView) {
         this.xAxisView = xAxisView;
         this.yAxisView = yAxisView;
 
