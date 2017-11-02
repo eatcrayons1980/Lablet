@@ -3,15 +3,15 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.1'
+        classpath 'com.android.tools.build:gradle:3.0.0'
     }
 }
 
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion '25.0.2'
+    compileSdkVersion 26
+    buildToolsVersion '26.0.2'
 
     defaultConfig {
         applicationId "nz.ac.auckland.lablet"
@@ -21,9 +21,6 @@ android {
         versionName "3.1.8"
         renderscriptTargetApi 24
         renderscriptSupportModeEnabled true
-        jackOptions {
-            enabled true
-        }
     }
 
     compileOptions {
@@ -55,10 +52,10 @@ android {
 
 android.applicationVariants.all { variant ->
     task("generate${variant.name.capitalize()}Javadoc", type: Javadoc) {
-        source = variant.javaCompile.source
+        source = variant.javaCompiler.source
         def androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
 
-        classpath = files(variant.javaCompile.classpath.files, androidJar)
+        classpath = files(variant.javaCompiler.classpath.files, androidJar)
         options {
             links "http://docs.oracle.com/javase/8/docs/api/"
             linksOffline "http://d.android.com/reference", "${android.sdkDirectory}/docs/reference"
@@ -78,13 +75,14 @@ repositories {
     maven {
         url 'http://dl.bintray.com/steveliles/maven'
     }
+    google()
 }
 
 dependencies {
     // TODO: Remove 'noinspection GradleCompatible' (next line) and fix error
     //noinspection GradleCompatible
-    compile 'com.android.support:support-v4:25.3.1'
-    compile 'com.android.support:support-annotations:25.3.1'
+    compile 'com.android.support:support-v4:26.1.0'
+    compile 'com.android.support:support-annotations:27.0.0'
     // OpenCV libraries from: https://github.com/steveliles/opencv-android
     compile 'org.opencv:OpenCV-Android:3.1.0'
     compile 'au.com.bytecode:opencsv:2.4'
