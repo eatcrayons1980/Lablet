@@ -25,7 +25,7 @@ public class Lablet extends Application {
     }
 
     /**
-     * Check is privacy policy has been approved. Display policy dialog if necessary.
+     * Check if privacy policy has been approved. Display policy dialog if necessary.
      *
      * @param activity context for dialog
      */
